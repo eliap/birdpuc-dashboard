@@ -1,0 +1,33 @@
+/* 
+   Since we transitioned to Tailwind CSS for the platypus.org.au theme, 
+   we no longer need custom CSS for layout! 
+   This file is intentionally minimal, keeping only absolute fallback styles if needed.
+*/
+
+* {
+    /* Smooth rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Optional custom scrollbar to match the clean design */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    /* slate-100 */
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    /* slate-300 */
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+    /* slate-400 */
+}

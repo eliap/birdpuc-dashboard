@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BirdPuc Dashboard</title>
+
+    <!-- Google Fonts: Open Sans & Amatic SC -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&family=Open+Sans:wght@400;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind CSS (via CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Open Sans"', 'sans-serif'],
+                        amatic: ['"Amatic SC"', 'cursive'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Minimal custom CSS if needed -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="bg-slate-50 text-slate-900 font-sans min-h-screen p-6 md:p-12">
+
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="mb-10 flex flex-col md:flex-row justify-between items-center text-center md:text-left gap-4">
+            <div>
+                <h1 class="font-amatic text-6xl md:text-7xl text-teal-800 font-bold mb-2">Project Platypus - BirdPuc
+                    Network
+                </h1>
+                <p class="text-slate-600 text-lg">Monitoring acoustic biodiversity across the Upper Wimmera Catchment.
+                </p>
+            </div>
+
+            <button id="refresh-btn"
+                class="bg-teal-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-teal-700 hover:shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh Status
+            </button>
+        </header>
+
+        <!-- Main Content Container with soft shadows and rounded corners -->
+        <main class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-teal-50 border-b border-slate-200">
+                        <tr>
+                            <th class="py-4 px-6 font-semibold text-teal-800 uppercase tracking-wider text-sm">PUC Name
+                            </th>
+                            <th
+                                class="py-4 px-6 font-semibold text-teal-800 uppercase tracking-wider text-sm text-center">
+                                Status</th>
+                            <th
+                                class="py-4 px-6 font-semibold text-teal-800 uppercase tracking-wider text-sm text-center">
+                                7-Day Activity</th>
+                            <th class="py-4 px-6 font-semibold text-teal-800 uppercase tracking-wider text-sm">Project
+                            </th>
+                            <th class="py-4 px-6 font-semibold text-teal-800 uppercase tracking-wider text-sm">Site</th>
+                        </tr>
+                    </thead>
+                    <tbody id="overview-table-body" class="divide-y divide-gray-200">
+                        <!-- Loading Row -->
+                        <tr id="loading-row">
+                            <td colspan="5" class="py-12 text-center text-slate-500">
+                                <span class="inline-block animate-pulse">Loading BirdPuc Data...</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+
+</html>
