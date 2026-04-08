@@ -25,8 +25,8 @@ export const STATION_REGISTER = [
     { name: "ELpuc01", id: "24482", project: "Elmhurst VLG2025", site: "Defined in each groups VLG" },
     { name: "ELpuc02", id: "24483", project: "Elmhurst VLG2025", site: "Defined in each groups VLG" },
     { name: "JLpuc01", id: "15980", project: "Jallukar VLG2025", site: "" },
-    { name: "JLpuc03", id: "24480", project: "Jalluka VLG2024", site: "Defined in each groups VLG" },
-    { name: "JLpuc04", id: "24481", project: "Jalluka VLG2024", site: "Defined in each groups VLG" },
+    { name: "JLpuc03", id: "24480", project: "Jallukar VLG2025", site: "Defined in each groups VLG" },
+    { name: "JLpuc04", id: "24481", project: "Jallukar VLG2025", site: "Defined in each groups VLG" },
     { name: "SUpuc01", id: "24534", project: "Stawell Urban VLG2025", site: "" }
 ];
 

@@ -1,6 +1,22 @@
 import { STATION_REGISTER, GRAPHQL_ENDPOINT } from './config.js';
 
 const tbody = document.getElementById('overview-table-body');
+const projectFilter = document.getElementById('project-filter');
+
+// Cache fetched data so filtering doesn't re-fetch
+let cachedStationData = [];
+
+// Populate project filter dropdown from config
+function populateProjectFilter() {
+    const projects = [...new Set(STATION_REGISTER.map(s => s.project).filter(Boolean))];
+    projects.sort();
+    projects.forEach(project => {
+        const option = document.createElement('option');
+        option.value = project;
+        option.textContent = project;
+        projectFilter.appendChild(option);
+    });
+}
 
 // Fetch function querying both realtime heartbeat and 7-day activity
 async function fetchStationData(station) {
@@ -56,18 +72,9 @@ async function fetchStationData(station) {
 
         // 2. Calculate 7-Day Activity
         if (!json.errors && json.data.dailyDetectionCounts) {
-            let installDateObj = null;
-            if (station.installed) {
-                installDateObj = new Date(station.installed);
-                installDateObj.setHours(0, 0, 0, 0);
-            }
-
             for (const day of json.data.dailyDetectionCounts) {
                 if (day.total > 0) {
-                    const dayDate = new Date(day.date);
-                    if (!installDateObj || dayDate >= installDateObj) {
-                        daysActive++;
-                    }
+                    daysActive++;
                 }
             }
         }
@@ -79,26 +86,27 @@ async function fetchStationData(station) {
     }
 }
 
-async function renderTable() {
-    // Initiate all fetches concurrently
-    const dataPromises = STATION_REGISTER.map(s => fetchStationData(s));
-    const stationData = await Promise.all(dataPromises);
-
-    tbody.innerHTML = ''; // Clear loading row
+// Render table rows, optionally filtered by project
+function displayTable(filterProject) {
+    tbody.innerHTML = '';
 
     STATION_REGISTER.forEach((station, index) => {
-        const data = stationData[index];
+        // Apply project filter
+        if (filterProject !== 'all' && station.project !== filterProject) return;
 
-        // Tailwind Status Badges
+        const data = cachedStationData[index];
+        if (!data) return; // Data not yet loaded
+
+        // Status Badge
         const statusBadge = data.isLive
             ? `<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-50 text-green-800 border border-green-200 shadow-sm"><span class="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>Live</span>`
             : `<span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-red-50 text-red-800 border border-red-200 shadow-sm"><span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span>Offline</span>`;
 
-        // Tailwind Activity Badges (using Level colors based on health)
-        let activityColor = "bg-red-50 text-red-800 border-red-200"; // Poor
-        if (data.daysActive >= 5) activityColor = "bg-green-50 text-green-800 border-green-200"; // Excellent
-        else if (data.daysActive >= 3) activityColor = "bg-yellow-50 text-yellow-800 border-yellow-200"; // Okay
-        else if (data.daysActive > 0) activityColor = "bg-orange-50 text-orange-800 border-orange-200"; // Warning
+        // Activity Badge
+        let activityColor = "bg-red-50 text-red-800 border-red-200";
+        if (data.daysActive >= 5) activityColor = "bg-green-50 text-green-800 border-green-200";
+        else if (data.daysActive >= 3) activityColor = "bg-yellow-50 text-yellow-800 border-yellow-200";
+        else if (data.daysActive > 0) activityColor = "bg-orange-50 text-orange-800 border-orange-200";
 
         const activityBadge = `<span class="inline-block px-3 py-1 rounded-md text-sm font-semibold border ${activityColor} shadow-sm">${data.daysActive} / 7 Days</span>`;
 
@@ -113,14 +121,37 @@ async function renderTable() {
         `;
         tbody.appendChild(tr);
     });
+
+    // Show empty state if no rows match
+    if (tbody.children.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="py-12 text-center text-slate-400 italic">No PUCs found for this project.</td>
+            </tr>
+        `;
+    }
 }
+
+// Fetch all data and render
+async function renderTable() {
+    const dataPromises = STATION_REGISTER.map(s => fetchStationData(s));
+    cachedStationData = await Promise.all(dataPromises);
+    displayTable(projectFilter.value);
+}
+
+// Populate filter on load
+populateProjectFilter();
 
 // Boot up
 renderTable();
 
+// Project Filter Change
+projectFilter.addEventListener('change', () => {
+    displayTable(projectFilter.value);
+});
+
 // Refresh Button Logic
 document.getElementById('refresh-btn').addEventListener('click', () => {
-    // Show loading row again
     tbody.innerHTML = `
         <tr id="loading-row">
             <td colspan="5" class="py-12 text-center text-slate-500">
@@ -128,6 +159,5 @@ document.getElementById('refresh-btn').addEventListener('click', () => {
             </td>
         </tr>
     `;
-    // Re-fetch and render
     renderTable();
 });
