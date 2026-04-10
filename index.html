@@ -56,8 +56,14 @@
             </button>
         </header>
 
-        <!-- Filter Bar -->
+        <!-- Controls Bar -->
         <div class="mb-6 flex flex-col sm:flex-row items-center gap-4">
+            <!-- View Toggle -->
+            <div class="inline-flex rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+                <button id="status-view-btn" class="px-4 py-2 text-sm font-semibold bg-teal-600 text-white transition-all">Status View</button>
+                <button id="data-view-btn" class="px-4 py-2 text-sm font-semibold bg-white text-slate-600 hover:bg-slate-50 transition-all">Data View</button>
+            </div>
+
             <label for="project-filter" class="text-slate-700 font-semibold text-sm uppercase tracking-wider">Filter by Project:</label>
             <select id="project-filter" class="bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all">
                 <option value="all">All Projects</option>
@@ -65,8 +71,8 @@
             </select>
         </div>
 
-        <!-- Main Content Container with soft shadows and rounded corners -->
-        <main class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <!-- Status View: Table -->
+        <main id="status-view" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-teal-50 border-b border-slate-200">
@@ -95,6 +101,15 @@
                 </table>
             </div>
         </main>
+
+        <!-- Data View: Card Grid -->
+        <div id="data-view" class="hidden">
+            <div id="data-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div class="col-span-full py-12 text-center text-slate-500">
+                    <span class="animate-pulse">Loading species data...</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="app.js"></script>
