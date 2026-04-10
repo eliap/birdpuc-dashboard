@@ -8,6 +8,8 @@ const dataView = document.getElementById('data-view');
 const dataCards = document.getElementById('data-cards');
 const statusViewBtn = document.getElementById('status-view-btn');
 const dataViewBtn = document.getElementById('data-view-btn');
+const sortControl = document.getElementById('sort-control');
+const sortSelect = document.getElementById('sort-select');
 
 // Cache fetched data so filtering doesn't re-fetch
 let cachedStationData = [];
@@ -33,6 +35,8 @@ function setView(view) {
     if (view === 'status') {
         statusView.classList.remove('hidden');
         dataView.classList.add('hidden');
+        sortControl.classList.add('hidden');
+        sortControl.classList.remove('flex');
         statusViewBtn.classList.add('bg-teal-600', 'text-white');
         statusViewBtn.classList.remove('bg-white', 'text-slate-600', 'hover:bg-slate-50');
         dataViewBtn.classList.remove('bg-teal-600', 'text-white');
@@ -40,6 +44,8 @@ function setView(view) {
     } else {
         statusView.classList.add('hidden');
         dataView.classList.remove('hidden');
+        sortControl.classList.remove('hidden');
+        sortControl.classList.add('flex');
         dataViewBtn.classList.add('bg-teal-600', 'text-white');
         dataViewBtn.classList.remove('bg-white', 'text-slate-600', 'hover:bg-slate-50');
         statusViewBtn.classList.remove('bg-teal-600', 'text-white');
@@ -271,14 +277,31 @@ function buildCard(station, speciesList) {
 
 function displayCards(filterProject) {
     dataCards.innerHTML = '';
-    let count = 0;
-    STATION_REGISTER.forEach((station, index) => {
-        if (filterProject !== 'all' && station.project !== filterProject) return;
+
+    // Build filtered list with original indices (for species data lookup)
+    let items = STATION_REGISTER.map((station, index) => ({ station, index }));
+    if (filterProject !== 'all') {
+        items = items.filter(item => item.station.project === filterProject);
+    }
+
+    // Sort
+    const sortVal = sortSelect.value;
+    items.sort((a, b) => {
+        if (sortVal === 'name-asc') return a.station.name.localeCompare(b.station.name);
+        if (sortVal === 'name-desc') return b.station.name.localeCompare(a.station.name);
+        const aCount = (cachedSpeciesData[a.index] || []).length;
+        const bCount = (cachedSpeciesData[b.index] || []).length;
+        if (sortVal === 'species-desc') return bCount - aCount;
+        if (sortVal === 'species-asc') return aCount - bCount;
+        return 0;
+    });
+
+    items.forEach(({ station, index }) => {
         const speciesList = cachedSpeciesData[index] || [];
         dataCards.appendChild(buildCard(station, speciesList));
-        count++;
     });
-    if (count === 0) {
+
+    if (items.length === 0) {
         dataCards.innerHTML = `<div class="col-span-full py-12 text-center text-slate-400 italic">No PUCs found for this project.</div>`;
     }
 }
@@ -296,6 +319,10 @@ populateProjectFilter();
 projectFilter.addEventListener('change', () => {
     if (currentView === 'status') displayTable(projectFilter.value);
     else displayCards(projectFilter.value);
+});
+
+sortSelect.addEventListener('change', () => {
+    displayCards(projectFilter.value);
 });
 
 document.getElementById('refresh-btn').addEventListener('click', () => {
