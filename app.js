@@ -14,6 +14,7 @@ const sortSelect = document.getElementById('sort-select');
 // Cache fetched data so filtering doesn't re-fetch
 let cachedStationData = [];
 let cachedSpeciesData = [];
+let cachedNewestSpecies = [];
 let speciesDataLoaded = false;
 let currentView = 'status';
 
@@ -191,13 +192,80 @@ async function fetchSpeciesData(station) {
     }
 }
 
+// Find the newest species added by comparing topSpecies across time windows
+async function fetchNewestSpecies(station, fullSpeciesList) {
+    if (!station.installed || fullSpeciesList.length === 0) return null;
+
+    const today = new Date().toISOString().split('T')[0];
+    const fullNames = new Set(fullSpeciesList.map(s => s.species.commonName));
+
+    // Time windows to check: 1 week, 2 weeks, 4 weeks, 8 weeks
+    const windows = [7, 14, 28, 56];
+    const labels = ['this week', 'in last 2 weeks', 'in last month', 'in last 2 months'];
+
+    const query = `
+        query TopSpecies($stationIds: [ID!]!, $period: InputDuration, $limit: Int) {
+            topSpecies(stationIds: $stationIds, period: $period, limit: $limit) {
+                species { commonName }
+                count
+            }
+        }
+    `;
+
+    for (let i = 0; i < windows.length; i++) {
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - windows[i]);
+        const cutoffStr = cutoff.toISOString().split('T')[0];
+
+        // Skip if cutoff is before install date
+        if (cutoffStr <= station.installed) {
+            return { name: null, label: 'all detected early on' };
+        }
+
+        try {
+            const res = await fetch(GRAPHQL_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({
+                    query,
+                    variables: {
+                        stationIds: [String(station.id)],
+                        period: { from: station.installed, to: cutoffStr },
+                        limit: 200
+                    }
+                })
+            });
+            const json = await res.json();
+            if (!json.errors && json.data.topSpecies) {
+                const shorterNames = new Set(json.data.topSpecies.map(s => s.species.commonName));
+                const newSpecies = fullSpeciesList.filter(s => !shorterNames.has(s.species.commonName));
+
+                if (newSpecies.length > 0) {
+                    // Pick the one with fewest total detections (most likely the very newest)
+                    newSpecies.sort((a, b) => a.count - b.count);
+                    return {
+                        name: newSpecies[0].species.commonName,
+                        count: newSpecies[0].count,
+                        total: newSpecies.length,
+                        label: labels[i]
+                    };
+                }
+            }
+        } catch (err) {
+            console.error(`Newest species error for ${station.id}:`, err);
+        }
+    }
+    // No new species found in any window — all appeared early
+    return { name: null, label: 'all detected early on' };
+}
+
 function formatDate(dateStr) {
     if (!dateStr) return 'Unknown';
     const d = new Date(dateStr + 'T00:00:00');
     return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function buildCard(station, speciesList) {
+function buildCard(station, speciesList, newestSpecies) {
     const totalSpecies = speciesList.length;
     const top5 = speciesList.slice(0, 5);
     const bottom5 = totalSpecies > 5 ? speciesList.slice(-5).reverse() : [];
@@ -230,6 +298,24 @@ function buildCard(station, speciesList) {
                 <span class="text-sm text-teal-600 ml-1">species detected</span>
             </div>
     `;
+
+    // Newest species
+    if (newestSpecies && newestSpecies.name) {
+        html += `
+            <div class="bg-amber-50 rounded-lg px-4 py-3 border border-amber-200">
+                <h4 class="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-1">Newest Species Added</h4>
+                <p class="text-amber-900 font-semibold">${newestSpecies.name}</p>
+                <p class="text-amber-600 text-xs mt-1">Detected ${newestSpecies.label} (${newestSpecies.count} detection${newestSpecies.count !== 1 ? 's' : ''})</p>
+            </div>
+        `;
+    } else if (newestSpecies) {
+        html += `
+            <div class="bg-slate-50 rounded-lg px-4 py-3 border border-slate-200">
+                <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Newest Species Added</h4>
+                <p class="text-slate-400 text-sm italic">All species detected early on</p>
+            </div>
+        `;
+    }
 
     // Top 5
     if (top5.length > 0) {
@@ -298,7 +384,8 @@ function displayCards(filterProject) {
 
     items.forEach(({ station, index }) => {
         const speciesList = cachedSpeciesData[index] || [];
-        dataCards.appendChild(buildCard(station, speciesList));
+        const newest = cachedNewestSpecies[index] || null;
+        dataCards.appendChild(buildCard(station, speciesList, newest));
     });
 
     if (items.length === 0) {
@@ -309,7 +396,24 @@ function displayCards(filterProject) {
 async function loadSpeciesData() {
     dataCards.innerHTML = `<div class="col-span-full py-12 text-center text-slate-500"><span class="animate-pulse">Loading species data...</span></div>`;
     cachedSpeciesData = await Promise.all(STATION_REGISTER.map(s => fetchSpeciesData(s)));
+
+    // Render cards immediately with species data, then load newest species in background
+    cachedNewestSpecies = new Array(STATION_REGISTER.length).fill(null);
     speciesDataLoaded = true;
+    displayCards(projectFilter.value);
+
+    // Fetch newest species for each station (in parallel, max 6 at a time to be polite)
+    const batchSize = 6;
+    for (let i = 0; i < STATION_REGISTER.length; i += batchSize) {
+        const batch = STATION_REGISTER.slice(i, i + batchSize).map((station, j) => {
+            const idx = i + j;
+            return fetchNewestSpecies(station, cachedSpeciesData[idx]).then(result => {
+                cachedNewestSpecies[idx] = result;
+            });
+        });
+        await Promise.all(batch);
+    }
+    // Re-render with newest species data
     displayCards(projectFilter.value);
 }
 
@@ -331,6 +435,7 @@ document.getElementById('refresh-btn').addEventListener('click', () => {
         renderTable();
     } else {
         speciesDataLoaded = false;
+        cachedNewestSpecies = [];
         loadSpeciesData();
     }
 });
