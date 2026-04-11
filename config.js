@@ -31,3 +31,4 @@ export const STATION_REGISTER = [
 ];
 
 export const GRAPHQL_ENDPOINT = "https://app.birdweather.com/graphql";
+export const REVIEWS_ENDPOINT = "https://script.google.com/macros/s/AKfycbw93xHB0KOC__CaP8nCNboOGN5S37Wkb3g6KJQHmMyO1MKyX8oC_GJeoCTwKQtqPVby_w/exec";
