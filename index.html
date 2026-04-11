@@ -28,6 +28,10 @@
         }
     </script>
 
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 
@@ -140,11 +144,20 @@
         <!-- Analysis View -->
         <div id="analysis-view" class="hidden">
             <div class="space-y-8">
+                <!-- Station Map -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-teal-50 px-6 py-4 border-b border-slate-200">
+                        <h2 class="font-bold text-lg text-teal-800">Station Locations</h2>
+                        <p class="text-sm text-slate-500">Satellite view of all BirdPUC monitoring stations. Hover for station ID.</p>
+                    </div>
+                    <div id="station-map" style="height: 450px; width: 100%;"></div>
+                </div>
+
                 <!-- Land Cover Composition -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="bg-teal-50 px-6 py-4 border-b border-slate-200">
-                        <h2 class="font-bold text-lg text-teal-800">Surrounding Land Cover (1 km radius)</h2>
-                        <p class="text-sm text-slate-500">ESA WorldCover 2021 + Global Pasture Watch classification</p>
+                        <h2 id="landcover-heading" class="font-bold text-lg text-teal-800">Surrounding Land Cover (1 km radius)</h2>
+                        <p class="text-sm text-slate-500">ESA WorldCover 2021 (10 m). Grassland not yet split into native/improved — GPW integration pending.</p>
                     </div>
                     <div class="px-6 py-4">
                         <div id="landcover-chart-container" style="position: relative; height: 600px; width: 100%;">
@@ -153,19 +166,91 @@
                     </div>
                 </div>
 
+                <!-- Analysis Parameters -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-teal-50 px-6 py-4 border-b border-slate-200">
+                        <h2 class="font-bold text-lg text-teal-800">Analysis Parameters</h2>
+                        <p class="text-sm text-slate-500">Adjust the spatial and temporal parameters, then the charts below update automatically.</p>
+                    </div>
+                    <div class="px-6 py-4">
+                        <div class="flex flex-wrap items-end gap-6">
+                            <div class="flex flex-col gap-1">
+                                <label class="text-slate-700 font-semibold text-xs uppercase tracking-wider">Buffer radius:</label>
+                                <select id="buffer-radius" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <option value="50">50 m</option>
+                                    <option value="500">500 m</option>
+                                    <option value="1000" selected>1 km</option>
+                                    <option value="5000">5 km</option>
+                                </select>
+                                <span class="text-xs text-slate-400">Requires pre-computed data</span>
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="text-slate-700 font-semibold text-xs uppercase tracking-wider">Bird data from:</label>
+                                <input id="analysis-date-from" type="date" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                <span id="latest-deploy-hint" class="text-xs text-slate-400"></span>
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="text-slate-700 font-semibold text-xs uppercase tracking-wider">Bird data to:</label>
+                                <input id="analysis-date-to" type="date" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="text-slate-700 font-semibold text-xs uppercase tracking-wider">Min days active:</label>
+                                <select id="min-days-filter" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <option value="0">All</option>
+                                    <option value="14">14+</option>
+                                    <option value="30" selected>30+</option>
+                                    <option value="60">60+</option>
+                                </select>
+                            </div>
+                            <div class="flex flex-col gap-1">
+                                <label class="text-slate-700 font-semibold text-xs uppercase tracking-wider">Min detections:</label>
+                                <select id="min-detections-filter" class="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <option value="0">None</option>
+                                    <option value="50" selected>50+</option>
+                                    <option value="200">200+</option>
+                                    <option value="500">500+</option>
+                                </select>
+                            </div>
+                            <button id="apply-analysis-params" class="bg-teal-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-teal-700 transition-all shadow-sm">
+                                Apply
+                            </button>
+                        </div>
+                        <p id="analysis-params-status" class="text-xs text-slate-400 mt-3 italic"></p>
+                    </div>
+                </div>
+
                 <!-- Diversity vs Native Vegetation scatter -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="bg-teal-50 px-6 py-4 border-b border-slate-200">
-                        <h2 class="font-bold text-lg text-teal-800">Bird Diversity vs Native Vegetation Cover</h2>
-                        <p class="text-sm text-slate-500">Species richness and Shannon diversity plotted against total native cover within 1 km</p>
+                        <h2 class="font-bold text-lg text-teal-800">Bird Diversity vs Native Woody Vegetation</h2>
+                        <p id="scatter-subtitle" class="text-sm text-slate-500">Four diversity metrics vs woody cover. Rarefied richness controls for unequal sampling effort.</p>
                     </div>
                     <div class="px-6 py-4">
+                        <p id="scatter-station-count" class="text-xs text-slate-400 mb-3 italic"></p>
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div style="position: relative; height: 400px;">
-                                <canvas id="richness-scatter"></canvas>
+                            <div>
+                                <div style="position: relative; height: 380px;">
+                                    <canvas id="richness-scatter"></canvas>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-2 leading-relaxed px-1">How many different species were detected. Stations running longer will naturally record more species, so this count is biased by monitoring duration.</p>
                             </div>
-                            <div style="position: relative; height: 400px;">
-                                <canvas id="shannon-scatter"></canvas>
+                            <div>
+                                <div style="position: relative; height: 380px;">
+                                    <canvas id="rarefied-scatter"></canvas>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-2 leading-relaxed px-1">Corrects for unequal sampling effort by asking "if every station had the same number of detections, how many species would we expect?" Makes comparisons fair.</p>
+                            </div>
+                            <div>
+                                <div style="position: relative; height: 380px;">
+                                    <canvas id="shannon-scatter"></canvas>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-2 leading-relaxed px-1">Combines species count with how evenly detections are spread across them. A site where one species dominates scores lower than one with an even spread.</p>
+                            </div>
+                            <div>
+                                <div style="position: relative; height: 380px;">
+                                    <canvas id="pielou-scatter"></canvas>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-2 leading-relaxed px-1">Isolates just the evenness: are detections spread equally across species, or does one dominate? Ranges from 0 (one species dominates) to 1 (perfectly even). Not affected by species count.</p>
                             </div>
                         </div>
                     </div>
