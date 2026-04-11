@@ -17,6 +17,8 @@ const reviewViewBtn = document.getElementById('review-view-btn');
 const reviewView = document.getElementById('review-view');
 const reviewList = document.getElementById('review-list');
 const reviewFilter = document.getElementById('review-filter');
+const analysisViewBtn = document.getElementById('analysis-view-btn');
+const analysisView = document.getElementById('analysis-view');
 
 // Modal refs
 const timelineModal = document.getElementById('timeline-modal');
@@ -90,8 +92,8 @@ function populateProjectFilter() {
 }
 
 // ─── View Toggle ───
-const allViewBtns = [statusViewBtn, dataViewBtn, reviewViewBtn];
-const allViews = { status: statusView, data: dataView, review: reviewView };
+const allViewBtns = [statusViewBtn, dataViewBtn, reviewViewBtn, analysisViewBtn];
+const allViews = { status: statusView, data: dataView, review: reviewView, analysis: analysisView };
 
 function setView(view) {
     currentView = view;
@@ -113,7 +115,7 @@ function setView(view) {
 
     // Activate selected view
     allViews[view].classList.remove('hidden');
-    const activeBtn = { status: statusViewBtn, data: dataViewBtn, review: reviewViewBtn }[view];
+    const activeBtn = { status: statusViewBtn, data: dataViewBtn, review: reviewViewBtn, analysis: analysisViewBtn }[view];
     activeBtn.classList.add('bg-teal-600', 'text-white');
     activeBtn.classList.remove('bg-white', 'text-slate-600', 'hover:bg-slate-50');
 
@@ -122,12 +124,15 @@ function setView(view) {
         else displayCards(projectFilter.value);
     } else if (view === 'review') {
         loadReviews();
+    } else if (view === 'analysis') {
+        loadAnalysisView();
     }
 }
 
 statusViewBtn.addEventListener('click', () => setView('status'));
 dataViewBtn.addEventListener('click', () => setView('data'));
 reviewViewBtn.addEventListener('click', () => setView('review'));
+analysisViewBtn.addEventListener('click', () => setView('analysis'));
 
 // ─── Status View (existing) ───
 async function fetchStationData(station) {
@@ -1076,6 +1081,234 @@ reviewFilter.addEventListener('change', () => {
     displayReviews(cachedReviews);
 });
 
+// ─── Analysis View ──────────────────────────────────────────────────────────
+let analysisLoaded = false;
+let landcoverData = null;
+let landcoverChart = null;
+let richnessChart = null;
+let shannonChart = null;
+
+const LC_COLORS = {
+    native_woody_pct: '#166534',      // dark green
+    native_grassland_pct: '#4ade80',  // light green
+    improved_pasture_pct: '#fbbf24',  // amber/yellow
+    cropping_pct: '#f97316',          // orange
+    water_pct: '#3b82f6',             // blue
+    built_up_pct: '#6b7280',          // grey
+    other_pct: '#d1d5db',             // light grey
+};
+
+const LC_LABELS = {
+    native_woody_pct: 'Native Woody',
+    native_grassland_pct: 'Native Grassland',
+    improved_pasture_pct: 'Improved Pasture',
+    cropping_pct: 'Cropping',
+    water_pct: 'Water',
+    built_up_pct: 'Built-up',
+    other_pct: 'Other',
+};
+
+function shannonDiversity(speciesList) {
+    if (!speciesList || speciesList.length === 0) return 0;
+    const totalCount = speciesList.reduce((sum, s) => sum + s.count, 0);
+    if (totalCount === 0) return 0;
+    let H = 0;
+    for (const s of speciesList) {
+        if (s.count > 0) {
+            const p = s.count / totalCount;
+            H -= p * Math.log(p);
+        }
+    }
+    return H;
+}
+
+async function loadAnalysisView() {
+    if (analysisLoaded) return;
+
+    // Load land cover data
+    try {
+        const resp = await fetch('landcover.json');
+        landcoverData = await resp.json();
+    } catch (err) {
+        document.getElementById('landcover-chart-container').innerHTML =
+            '<p class="text-slate-400 italic text-center py-8">Could not load landcover.json. Run the analysis script first.</p>';
+        return;
+    }
+
+    // Ensure species data is loaded for diversity metrics
+    if (!speciesDataLoaded) {
+        cachedSpeciesData = await Promise.all(STATION_REGISTER.map(s => fetchSpeciesData(s)));
+        speciesDataLoaded = true;
+    }
+
+    // Sort stations by total native vegetation (descending)
+    const sorted = [...landcoverData].sort((a, b) => {
+        const aNative = a.landcover_1km.native_woody_pct + a.landcover_1km.native_grassland_pct;
+        const bNative = b.landcover_1km.native_woody_pct + b.landcover_1km.native_grassland_pct;
+        return bNative - aNative;
+    });
+
+    renderLandcoverChart(sorted);
+    renderScatterPlots(sorted);
+    analysisLoaded = true;
+}
+
+function renderLandcoverChart(sorted) {
+    const labels = sorted.map(s => s.name);
+    const lcKeys = Object.keys(LC_LABELS);
+
+    const datasets = lcKeys.map(key => ({
+        label: LC_LABELS[key],
+        data: sorted.map(s => s.landcover_1km[key]),
+        backgroundColor: LC_COLORS[key],
+        borderWidth: 0,
+        borderSkipped: false,
+    }));
+
+    // Adjust canvas height based on station count
+    const chartContainer = document.getElementById('landcover-chart-container');
+    const chartHeight = Math.max(400, sorted.length * 28);
+    chartContainer.style.height = chartHeight + 'px';
+
+    if (landcoverChart) landcoverChart.destroy();
+    const ctx = document.getElementById('landcover-chart').getContext('2d');
+    landcoverChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    stacked: true,
+                    max: 100,
+                    title: { display: true, text: '% of 1 km buffer area', font: { size: 12 } },
+                    ticks: { callback: v => v + '%' },
+                    grid: { color: '#f1f5f9' },
+                },
+                y: {
+                    stacked: true,
+                    grid: { display: false },
+                    ticks: { font: { size: 11, weight: 'bold' } },
+                },
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { boxWidth: 14, padding: 16, font: { size: 11 } },
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.dataset.label}: ${ctx.raw}%`,
+                    },
+                },
+            },
+        },
+    });
+}
+
+function renderScatterPlots(sorted) {
+    // Build scatter data: native veg % vs species richness and Shannon H
+    const scatterData = sorted.map(station => {
+        const stationIdx = STATION_REGISTER.findIndex(s => s.name === station.name);
+        const speciesList = stationIdx >= 0 ? (cachedSpeciesData[stationIdx] || []) : [];
+        const filtered = filterMisids(speciesList);
+        const richness = filtered.length;
+        const H = shannonDiversity(filtered);
+        const nativePct = station.landcover_1km.native_woody_pct + station.landcover_1km.native_grassland_pct;
+        return { name: station.name, nativePct, richness, H };
+    });
+
+    // Richness scatter
+    if (richnessChart) richnessChart.destroy();
+    const ctx1 = document.getElementById('richness-scatter').getContext('2d');
+    richnessChart = new Chart(ctx1, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Species Richness',
+                data: scatterData.map(d => ({ x: d.nativePct, y: d.richness })),
+                backgroundColor: '#0d9488',
+                pointRadius: 6,
+                pointHoverRadius: 9,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    title: { display: true, text: '% Native Vegetation (1 km)', font: { size: 12 } },
+                    ticks: { callback: v => v + '%' },
+                    min: 0,
+                    grid: { color: '#f1f5f9' },
+                },
+                y: {
+                    title: { display: true, text: 'Species Richness', font: { size: 12 } },
+                    beginAtZero: true,
+                    grid: { color: '#f1f5f9' },
+                },
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const d = scatterData[ctx.dataIndex];
+                            return `${d.name}: ${d.richness} species, ${d.nativePct.toFixed(1)}% native`;
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    // Shannon scatter
+    if (shannonChart) shannonChart.destroy();
+    const ctx2 = document.getElementById('shannon-scatter').getContext('2d');
+    shannonChart = new Chart(ctx2, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Shannon Diversity (H′)',
+                data: scatterData.map(d => ({ x: d.nativePct, y: Math.round(d.H * 100) / 100 })),
+                backgroundColor: '#7c3aed',
+                pointRadius: 6,
+                pointHoverRadius: 9,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    title: { display: true, text: '% Native Vegetation (1 km)', font: { size: 12 } },
+                    ticks: { callback: v => v + '%' },
+                    min: 0,
+                    grid: { color: '#f1f5f9' },
+                },
+                y: {
+                    title: { display: true, text: 'Shannon Diversity (H′)', font: { size: 12 } },
+                    beginAtZero: true,
+                    grid: { color: '#f1f5f9' },
+                },
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const d = scatterData[ctx.dataIndex];
+                            return `${d.name}: H′=${d.H.toFixed(2)}, ${d.nativePct.toFixed(1)}% native`;
+                        },
+                    },
+                },
+            },
+        },
+    });
+}
+
 // ─── Shared Controls ───
 populateProjectFilter();
 
@@ -1116,6 +1349,9 @@ document.getElementById('refresh-btn').addEventListener('click', () => {
         renderTable();
     } else if (currentView === 'review') {
         loadReviews();
+    } else if (currentView === 'analysis') {
+        analysisLoaded = false;
+        loadAnalysisView();
     } else {
         speciesDataLoaded = false;
         cachedNewestSpecies = [];

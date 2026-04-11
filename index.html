@@ -28,6 +28,9 @@
         }
     </script>
 
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
     <!-- Minimal custom CSS if needed -->
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -63,6 +66,7 @@
                 <button id="status-view-btn" class="px-4 py-2 text-sm font-semibold bg-teal-600 text-white transition-all">Status View</button>
                 <button id="data-view-btn" class="px-4 py-2 text-sm font-semibold bg-white text-slate-600 hover:bg-slate-50 transition-all">Data View</button>
                 <button id="review-view-btn" class="px-4 py-2 text-sm font-semibold bg-white text-slate-600 hover:bg-slate-50 transition-all">Review View</button>
+                <button id="analysis-view-btn" class="px-4 py-2 text-sm font-semibold bg-white text-slate-600 hover:bg-slate-50 transition-all">Analysis View</button>
             </div>
 
             <label for="project-filter" class="text-slate-700 font-semibold text-sm uppercase tracking-wider">Filter by Project:</label>
@@ -129,6 +133,42 @@
             <div id="data-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 <div class="col-span-full py-12 text-center text-slate-500">
                     <span class="animate-pulse">Loading species data...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis View -->
+        <div id="analysis-view" class="hidden">
+            <div class="space-y-8">
+                <!-- Land Cover Composition -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-teal-50 px-6 py-4 border-b border-slate-200">
+                        <h2 class="font-bold text-lg text-teal-800">Surrounding Land Cover (1 km radius)</h2>
+                        <p class="text-sm text-slate-500">ESA WorldCover 2021 + Global Pasture Watch classification</p>
+                    </div>
+                    <div class="px-6 py-4">
+                        <div id="landcover-chart-container" style="position: relative; height: 600px; width: 100%;">
+                            <canvas id="landcover-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Diversity vs Native Vegetation scatter -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-teal-50 px-6 py-4 border-b border-slate-200">
+                        <h2 class="font-bold text-lg text-teal-800">Bird Diversity vs Native Vegetation Cover</h2>
+                        <p class="text-sm text-slate-500">Species richness and Shannon diversity plotted against total native cover within 1 km</p>
+                    </div>
+                    <div class="px-6 py-4">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div style="position: relative; height: 400px;">
+                                <canvas id="richness-scatter"></canvas>
+                            </div>
+                            <div style="position: relative; height: 400px;">
+                                <canvas id="shannon-scatter"></canvas>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
