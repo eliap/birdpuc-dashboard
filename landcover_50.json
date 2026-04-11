@@ -5,13 +5,13 @@
     "lat": -37.01143,
     "lon": 142.69984,
     "landcover_1km": {
-      "native_woody_pct": 51.0,
+      "native_woody_pct": 46.9,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 5.8,
-      "water_pct": 0.1,
-      "built_up_pct": 0.9,
-      "other_pct": 42.2
+      "cropping_pct": 0.0,
+      "water_pct": 0.0,
+      "built_up_pct": 17.4,
+      "other_pct": 35.7
     }
   },
   {
@@ -20,13 +20,13 @@
     "lat": -37.05577,
     "lon": 142.89731,
     "landcover_1km": {
-      "native_woody_pct": 8.4,
+      "native_woody_pct": 69.9,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 0.1,
+      "cropping_pct": 0.0,
       "water_pct": 0.0,
-      "built_up_pct": 0.1,
-      "other_pct": 91.4
+      "built_up_pct": 0.0,
+      "other_pct": 30.1
     }
   },
   {
@@ -35,13 +35,13 @@
     "lat": -37.25018,
     "lon": 143.03227,
     "landcover_1km": {
-      "native_woody_pct": 6.0,
+      "native_woody_pct": 36.0,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 0.4,
+      "cropping_pct": 0.0,
       "water_pct": 0.0,
-      "built_up_pct": 0.1,
-      "other_pct": 93.5
+      "built_up_pct": 0.0,
+      "other_pct": 64.0
     }
   },
   {
@@ -50,13 +50,13 @@
     "lat": -37.03322,
     "lon": 142.89028,
     "landcover_1km": {
-      "native_woody_pct": 5.8,
+      "native_woody_pct": 66.4,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 0.1,
+      "cropping_pct": 0.0,
       "water_pct": 0.0,
       "built_up_pct": 0.0,
-      "other_pct": 94.1
+      "other_pct": 33.6
     }
   },
   {
@@ -65,13 +65,13 @@
     "lat": -37.0877,
     "lon": 142.92433,
     "landcover_1km": {
-      "native_woody_pct": 7.7,
+      "native_woody_pct": 5.1,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 12.8,
+      "cropping_pct": 0.0,
       "water_pct": 0.0,
       "built_up_pct": 0.0,
-      "other_pct": 79.5
+      "other_pct": 94.9
     }
   },
   {
@@ -80,13 +80,13 @@
     "lat": -37.05998,
     "lon": 142.99501,
     "landcover_1km": {
-      "native_woody_pct": 2.8,
+      "native_woody_pct": 0.0,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 36.6,
+      "cropping_pct": 13.0,
       "water_pct": 0.0,
-      "built_up_pct": 0.3,
-      "other_pct": 60.3
+      "built_up_pct": 0.0,
+      "other_pct": 87.0
     }
   },
   {
@@ -95,13 +95,13 @@
     "lat": -37.08958,
     "lon": 143.12999,
     "landcover_1km": {
-      "native_woody_pct": 19.0,
+      "native_woody_pct": 54.9,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 0.7,
-      "water_pct": 1.0,
-      "built_up_pct": 0.2,
-      "other_pct": 79.1
+      "cropping_pct": 0.0,
+      "water_pct": 0.0,
+      "built_up_pct": 0.0,
+      "other_pct": 45.1
     }
   },
   {
@@ -110,13 +110,13 @@
     "lat": -37.20547,
     "lon": 143.09375,
     "landcover_1km": {
-      "native_woody_pct": 8.3,
+      "native_woody_pct": 0.0,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 6.1,
-      "water_pct": 0.2,
-      "built_up_pct": 0.4,
-      "other_pct": 85.0
+      "cropping_pct": 0.0,
+      "water_pct": 0.0,
+      "built_up_pct": 0.0,
+      "other_pct": 100.0
     }
   },
   {
@@ -125,13 +125,13 @@
     "lat": -37.21882,
     "lon": 143.14566,
     "landcover_1km": {
-      "native_woody_pct": 2.1,
+      "native_woody_pct": 39.5,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 11.3,
+      "cropping_pct": 0.0,
       "water_pct": 0.0,
       "built_up_pct": 0.0,
-      "other_pct": 86.6
+      "other_pct": 60.5
     }
   },
   {
@@ -140,13 +140,13 @@
     "lat": -37.24889,
     "lon": 143.01921,
     "landcover_1km": {
-      "native_woody_pct": 3.2,
+      "native_woody_pct": 35.7,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
       "cropping_pct": 0.0,
       "water_pct": 0.0,
       "built_up_pct": 0.0,
-      "other_pct": 96.8
+      "other_pct": 64.3
     }
   },
   {
@@ -155,13 +155,13 @@
     "lat": -37.2612,
     "lon": 142.6776,
     "landcover_1km": {
-      "native_woody_pct": 78.7,
+      "native_woody_pct": 100.0,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 0.3,
+      "cropping_pct": 0.0,
       "water_pct": 0.0,
       "built_up_pct": 0.0,
-      "other_pct": 21.0
+      "other_pct": 0.0
     }
   },
   {
@@ -170,13 +170,13 @@
     "lat": -36.52112,
     "lon": 141.44798,
     "landcover_1km": {
-      "native_woody_pct": 99.0,
+      "native_woody_pct": 88.5,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
       "cropping_pct": 0.0,
       "water_pct": 0.0,
       "built_up_pct": 0.0,
-      "other_pct": 1.0
+      "other_pct": 11.5
     }
   },
   {
@@ -185,13 +185,13 @@
     "lat": -37.2604,
     "lon": 142.6386,
     "landcover_1km": {
-      "native_woody_pct": 65.7,
+      "native_woody_pct": 0.0,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
       "cropping_pct": 0.0,
       "water_pct": 0.0,
       "built_up_pct": 0.0,
-      "other_pct": 34.3
+      "other_pct": 100.0
     }
   },
   {
@@ -200,13 +200,13 @@
     "lat": -37.2094,
     "lon": 142.5988,
     "landcover_1km": {
-      "native_woody_pct": 83.8,
+      "native_woody_pct": 100.0,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
       "cropping_pct": 0.0,
       "water_pct": 0.0,
-      "built_up_pct": 0.1,
-      "other_pct": 16.1
+      "built_up_pct": 0.0,
+      "other_pct": 0.0
     }
   },
   {
@@ -215,13 +215,13 @@
     "lat": -37.0412,
     "lon": 142.773,
     "landcover_1km": {
-      "native_woody_pct": 75.0,
+      "native_woody_pct": 100.0,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 0.2,
-      "water_pct": 0.2,
-      "built_up_pct": 9.9,
-      "other_pct": 14.7
+      "cropping_pct": 0.0,
+      "water_pct": 0.0,
+      "built_up_pct": 0.0,
+      "other_pct": 0.0
     }
   },
   {
@@ -230,13 +230,13 @@
     "lat": -36.9074,
     "lon": 142.4766,
     "landcover_1km": {
-      "native_woody_pct": 80.9,
+      "native_woody_pct": 87.9,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
       "cropping_pct": 0.0,
       "water_pct": 0.0,
-      "built_up_pct": 0.4,
-      "other_pct": 18.7
+      "built_up_pct": 0.0,
+      "other_pct": 12.1
     }
   },
   {
@@ -245,13 +245,13 @@
     "lat": -36.92,
     "lon": 142.486,
     "landcover_1km": {
-      "native_woody_pct": 99.7,
+      "native_woody_pct": 100.0,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
       "cropping_pct": 0.0,
       "water_pct": 0.0,
       "built_up_pct": 0.0,
-      "other_pct": 0.3
+      "other_pct": 0.0
     }
   },
   {
@@ -260,13 +260,13 @@
     "lat": -36.41189,
     "lon": 141.77153,
     "landcover_1km": {
-      "native_woody_pct": 39.8,
+      "native_woody_pct": 79.8,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 50.9,
+      "cropping_pct": 1.8,
       "water_pct": 0.0,
       "built_up_pct": 0.0,
-      "other_pct": 9.3
+      "other_pct": 18.4
     }
   },
   {
@@ -275,13 +275,13 @@
     "lat": -36.4552,
     "lon": 141.749,
     "landcover_1km": {
-      "native_woody_pct": 47.3,
+      "native_woody_pct": 0.0,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 42.8,
+      "cropping_pct": 0.0,
       "water_pct": 0.0,
       "built_up_pct": 0.0,
-      "other_pct": 9.9
+      "other_pct": 100.0
     }
   },
   {
@@ -290,13 +290,13 @@
     "lat": -37.21658,
     "lon": 142.7989,
     "landcover_1km": {
-      "native_woody_pct": 20.7,
+      "native_woody_pct": 39.8,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 0.7,
+      "cropping_pct": 0.0,
       "water_pct": 0.0,
-      "built_up_pct": 0.0,
-      "other_pct": 78.6
+      "built_up_pct": 6.2,
+      "other_pct": 54.0
     }
   },
   {
@@ -305,13 +305,13 @@
     "lat": -36.93893,
     "lon": 142.52283,
     "landcover_1km": {
-      "native_woody_pct": 1.9,
+      "native_woody_pct": 7.8,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 13.4,
+      "cropping_pct": 5.2,
       "water_pct": 0.0,
-      "built_up_pct": 0.1,
-      "other_pct": 84.6
+      "built_up_pct": 21.7,
+      "other_pct": 65.3
     }
   },
   {
@@ -320,13 +320,13 @@
     "lat": -36.92016,
     "lon": 142.56526,
     "landcover_1km": {
-      "native_woody_pct": 5.4,
+      "native_woody_pct": 6.2,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 66.8,
+      "cropping_pct": 1.8,
       "water_pct": 0.0,
       "built_up_pct": 0.0,
-      "other_pct": 27.8
+      "other_pct": 92.0
     }
   },
   {
@@ -335,13 +335,13 @@
     "lat": -37.05114,
     "lon": 142.76529,
     "landcover_1km": {
-      "native_woody_pct": 30.9,
+      "native_woody_pct": 2.6,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 2.4,
-      "water_pct": 0.4,
-      "built_up_pct": 40.4,
-      "other_pct": 25.9
+      "cropping_pct": 0.0,
+      "water_pct": 0.0,
+      "built_up_pct": 97.4,
+      "other_pct": 0.0
     }
   },
   {
@@ -350,13 +350,13 @@
     "lat": -37.88313,
     "lon": 145.29906,
     "landcover_1km": {
-      "native_woody_pct": 72.3,
+      "native_woody_pct": 86.3,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
       "cropping_pct": 0.0,
-      "water_pct": 0.4,
-      "built_up_pct": 23.1,
-      "other_pct": 4.2
+      "water_pct": 0.0,
+      "built_up_pct": 10.3,
+      "other_pct": 3.4
     }
   },
   {
@@ -365,13 +365,13 @@
     "lat": -37.14634,
     "lon": 142.57239,
     "landcover_1km": {
-      "native_woody_pct": 39.4,
+      "native_woody_pct": 70.3,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 1.4,
-      "water_pct": 1.1,
-      "built_up_pct": 0.9,
-      "other_pct": 57.2
+      "cropping_pct": 0.0,
+      "water_pct": 1.8,
+      "built_up_pct": 0.0,
+      "other_pct": 27.9
     }
   },
   {
@@ -380,13 +380,13 @@
     "lat": -37.09446,
     "lon": 142.73088,
     "landcover_1km": {
-      "native_woody_pct": 65.5,
+      "native_woody_pct": 34.8,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
-      "cropping_pct": 0.1,
-      "water_pct": 0.1,
-      "built_up_pct": 1.1,
-      "other_pct": 33.2
+      "cropping_pct": 0.0,
+      "water_pct": 0.0,
+      "built_up_pct": 6.1,
+      "other_pct": 59.1
     }
   },
   {
@@ -395,13 +395,13 @@
     "lat": -37.255,
     "lon": 142.6358,
     "landcover_1km": {
-      "native_woody_pct": 36.2,
+      "native_woody_pct": 9.8,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
       "cropping_pct": 0.0,
       "water_pct": 0.0,
-      "built_up_pct": 0.1,
-      "other_pct": 63.7
+      "built_up_pct": 0.0,
+      "other_pct": 90.2
     }
   },
   {
@@ -410,13 +410,13 @@
     "lat": -38.38334,
     "lon": 142.23343,
     "landcover_1km": {
-      "native_woody_pct": 9.0,
+      "native_woody_pct": 3.5,
       "native_grassland_pct": 0.0,
       "improved_pasture_pct": 0.0,
       "cropping_pct": 0.0,
-      "water_pct": 16.6,
-      "built_up_pct": 30.2,
-      "other_pct": 44.2
+      "water_pct": 0.0,
+      "built_up_pct": 93.9,
+      "other_pct": 2.6
     }
   }
 ]

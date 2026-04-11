@@ -1,14 +1,14 @@
 // Station configuration data
 export const STATION_REGISTER = [
     { name: "PPpuc02", id: "12383", project: "Squirrel Glider", site: "Lees Parry Place", installed: "2025-08-08" },
-    { name: "PPpuc03", id: "16007", project: "Wimmera CMA Reveg Evaluation Project", site: "Overdale Scour", installed: "2026-02-25" },
+    { name: "PPpuc03", id: "16007", project: "Wimmera CMA Reveg Evaluation Project", site: "Overdale Scour", installed: "2026-02-25", latOverride: -37.055774, lonOverride: 142.897307 },
     { name: "PPpuc04", id: "23022", project: "Wimmera CMA Reveg Evaluation Project", site: "Rob and Debbie Creekline", installed: "2026-02-26" },
-    { name: "PPpuc05", id: "23012", project: "Wimmera CMA Reveg Evaluation Project", site: "Overdale Hill", installed: "2026-02-25" },
+    { name: "PPpuc05", id: "23012", project: "Wimmera CMA Reveg Evaluation Project", site: "Overdale Hill", installed: "2026-02-25", latOverride: -37.033216, lonOverride: 142.890275 },
     { name: "PPpuc06", id: "23013", project: "Wimmera CMA Reveg Evaluation Project", site: "Overdale Biolink", installed: "2026-02-25" },
     { name: "PPpuc07", id: "23016", project: "Wimmera CMA Reveg Evaluation Project", site: "Hughes Shelter", installed: "2026-02-25" },
     { name: "PPpuc08", id: "23017", project: "Wimmera CMA Reveg Evaluation Project", site: "Glendhu Hill 2", installed: "2026-02-26" },
     { name: "PPpuc10", id: "23019", project: "Wimmera CMA Reveg Evaluation Project", site: "McKay Shelter 1", installed: "2026-02-26" },
-    { name: "PPpuc11", id: "23020", project: "Wimmera CMA Reveg Evaluation Project", site: "Harrington Creek 2", installed: "2026-02-26" },
+    { name: "PPpuc11", id: "23020", project: "Wimmera CMA Reveg Evaluation Project", site: "Harrington Creek 2", installed: "2026-02-26", latOverride: -37.218824, lonOverride: 143.145662 },
     { name: "PPpuc12", id: "23021", project: "Wimmera CMA Reveg Evaluation Project", site: "Rob and Debbie Farm", installed: "2026-02-26" },
     { name: "PPpuc13", id: "22378", project: "Wimmera CMA Landcare Fire Recovery Partnership", site: "Rosie Nater, Moyston", installed: "2026-02-12" },
     { name: "PPpuc14", id: "22379", project: "Wimmera CMA Landcare Fire Recovery Partnership", site: "Stuart and Kerrie Thorpe", installed: "2026-02-18" },
