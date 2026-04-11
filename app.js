@@ -1083,7 +1083,7 @@ reviewFilter.addEventListener('change', () => {
 
 // ─── Analysis View ──────────────────────────────────────────────────────────
 let analysisLoaded = false;
-let landcoverData = [];
+let landcoverData = null;
 let landcoverChart = null;
 let richnessChart = null;
 let shannonChart = null;
@@ -1095,7 +1095,7 @@ const LC_COLORS = {
     cropping_pct: '#f97316',          // orange
     water_pct: '#3b82f6',             // blue
     built_up_pct: '#6b7280',          // grey
-    other_pct: '#c4b5a0',             // tan/khaki — grassland/pasture
+    other_pct: '#d1d5db',             // light grey
 };
 
 const LC_LABELS = {
@@ -1105,46 +1105,8 @@ const LC_LABELS = {
     cropping_pct: 'Cropping',
     water_pct: 'Water',
     built_up_pct: 'Built-up',
-    other_pct: 'Grassland / Pasture',
+    other_pct: 'Other',
 };
-
-// ─── Stats helpers ───
-function linearRegression(data) {
-    const n = data.length;
-    if (n < 2) return { slope: 0, intercept: 0, r2: 0 };
-    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
-    for (const { x, y } of data) {
-        sumX += x; sumY += y; sumXY += x * y; sumX2 += x * x; sumY2 += y * y;
-    }
-    const denom = n * sumX2 - sumX * sumX;
-    if (denom === 0) return { slope: 0, intercept: sumY / n, r2: 0 };
-    const slope = (n * sumXY - sumX * sumY) / denom;
-    const intercept = (sumY - slope * sumX) / n;
-    const ssRes = data.reduce((s, d) => s + (d.y - (slope * d.x + intercept)) ** 2, 0);
-    const meanY = sumY / n;
-    const ssTot = data.reduce((s, d) => s + (d.y - meanY) ** 2, 0);
-    const r2 = ssTot === 0 ? 0 : 1 - ssRes / ssTot;
-    return { slope, intercept, r2 };
-}
-
-function trendlineDataset(points, color) {
-    if (points.length < 2) return null;
-    const { slope, intercept, r2 } = linearRegression(points);
-    const xs = points.map(p => p.x);
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    return {
-        type: 'line',
-        label: `Trend (R²=${r2.toFixed(3)})`,
-        data: [{ x: minX, y: slope * minX + intercept }, { x: maxX, y: slope * maxX + intercept }],
-        borderColor: color,
-        borderWidth: 2,
-        borderDash: [6, 4],
-        pointRadius: 0,
-        fill: false,
-        r2,
-    };
-}
 
 function shannonDiversity(speciesList) {
     if (!speciesList || speciesList.length === 0) return 0;
@@ -1160,301 +1122,35 @@ function shannonDiversity(speciesList) {
     return H;
 }
 
-function simpsonDiversity(speciesList) {
-    // Simpson's 1-D (probability two random individuals are different species)
-    if (!speciesList || speciesList.length === 0) return 0;
-    const totalCount = speciesList.reduce((sum, s) => sum + s.count, 0);
-    if (totalCount <= 1) return 0;
-    let D = 0;
-    for (const s of speciesList) {
-        if (s.count > 0) {
-            const p = s.count / totalCount;
-            D += p * p;
-        }
-    }
-    return 1 - D;
-}
-
-function pielouEvenness(speciesList) {
-    // Pielou's J = H' / ln(S), ranges 0-1
-    if (!speciesList || speciesList.length <= 1) return 0;
-    const H = shannonDiversity(speciesList);
-    const S = speciesList.filter(s => s.count > 0).length;
-    if (S <= 1) return 0;
-    return H / Math.log(S);
-}
-
-function rarefiedRichness(speciesList, sampleSize) {
-    // Individual-based rarefaction (Hurlbert 1971)
-    // E(S_n) = S - sum_i( C(N-Ni, n) / C(N, n) )
-    // Uses log-space to avoid overflow with large factorials
-    if (!speciesList || speciesList.length === 0) return 0;
-    const counts = speciesList.filter(s => s.count > 0).map(s => s.count);
-    const N = counts.reduce((a, b) => a + b, 0);
-    if (N === 0 || sampleSize > N) return counts.length; // can't rarefy up
-    if (sampleSize <= 0) return 0;
-
-    // log of binomial coefficient C(n, k) using Stirling-like log-gamma
-    function logBinom(n, k) {
-        if (k < 0 || k > n) return -Infinity;
-        if (k === 0 || k === n) return 0;
-        // Use the sum of logs approach for accuracy
-        let result = 0;
-        for (let i = 0; i < k; i++) {
-            result += Math.log(n - i) - Math.log(i + 1);
-        }
-        return result;
-    }
-
-    const logCNn = logBinom(N, sampleSize);
-    let expectedS = 0;
-    for (const ni of counts) {
-        const logCRemaining = logBinom(N - ni, sampleSize);
-        const probAbsent = Math.exp(logCRemaining - logCNn);
-        expectedS += (1 - probAbsent);
-    }
-    return expectedS;
-}
-
-function totalDetections(speciesList) {
-    if (!speciesList || speciesList.length === 0) return 0;
-    return speciesList.reduce((sum, s) => sum + s.count, 0);
-}
-
-function stationDaysActive(station) {
-    if (!station.installed) return 0;
-    const installed = new Date(station.installed);
-    const now = new Date();
-    return Math.floor((now - installed) / (1000 * 60 * 60 * 24));
-}
-
-const MIN_DETECTIONS_DEFAULT = 50;
-
-// ─── Analysis species fetch with custom date range ───
-let analysisSpeciesData = null; // separate cache for analysis view
-let analysisDateFrom = null;
-let analysisDateTo = null;
-let currentBufferRadius = 1000;
-
-const BUFFER_RADIUS_LABELS = { 50: '50 m', 500: '500 m', 1000: '1 km', 5000: '5 km' };
-
-function landcoverJsonFilename(radiusM) {
-    return radiusM === 1000 ? 'landcover.json' : `landcover_${radiusM}.json`;
-}
-
-async function fetchSpeciesForAnalysis(station, dateFrom, dateTo) {
-    const period = { from: dateFrom, to: dateTo };
-    const query = `
-        query TopSpecies($stationIds: [ID!]!, $period: InputDuration, $limit: Int) {
-            topSpecies(stationIds: $stationIds, period: $period, limit: $limit) {
-                species { id commonName scientificName }
-                count
-            }
-        }
-    `;
-    const variables = { stationIds: [String(station.id)], period, limit: 200 };
-    try {
-        const res = await fetch(GRAPHQL_ENDPOINT, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ query, variables })
-        });
-        const json = await res.json();
-        if (!json.errors && json.data.topSpecies) return json.data.topSpecies;
-        return [];
-    } catch (err) {
-        console.error(`Analysis species error for ${station.id}:`, err);
-        return [];
-    }
-}
-
-function getFilteredStationRegister() {
-    const proj = projectFilter.value;
-    if (!proj) return STATION_REGISTER;
-    return STATION_REGISTER.filter(s => s.project === proj);
-}
-
-function updateLatestDeployHint() {
-    const hintEl = document.getElementById('latest-deploy-hint');
-    if (!hintEl) return;
-    const filtered = getFilteredStationRegister().filter(s => s.installed);
-    if (filtered.length === 0) { hintEl.textContent = ''; return; }
-    const latest = filtered.map(s => s.installed).sort().pop();
-    hintEl.textContent = `Latest deployment: ${latest}`;
-}
-
-function initAnalysisDatePickers() {
-    const fromEl = document.getElementById('analysis-date-from');
-    const toEl = document.getElementById('analysis-date-to');
-    if (!fromEl.value) {
-        // Default: latest installed date among filtered stations so all are covered
-        const filtered = getFilteredStationRegister().filter(s => s.installed);
-        const dates = filtered.map(s => s.installed).sort();
-        fromEl.value = dates[dates.length - 1] || '2025-01-01';
-    }
-    if (!toEl.value) {
-        toEl.value = new Date().toISOString().split('T')[0];
-    }
-    updateLatestDeployHint();
-}
-
 async function loadAnalysisView() {
     if (analysisLoaded) return;
 
-    initAnalysisDatePickers();
-
-    // Load land cover data for current buffer radius
-    const radiusM = parseInt(document.getElementById('buffer-radius')?.value || '1000', 10);
-    currentBufferRadius = radiusM;
-    const lcFile = landcoverJsonFilename(radiusM);
+    // Load land cover data
     try {
-        const resp = await fetch(lcFile);
-        if (!resp.ok) throw new Error(`${lcFile} not found (${resp.status})`);
+        const resp = await fetch('landcover.json');
         landcoverData = await resp.json();
     } catch (err) {
         document.getElementById('landcover-chart-container').innerHTML =
-            `<p class="text-slate-400 italic text-center py-8">Could not load ${lcFile}. Run: <code>python landcover.py --radius ${radiusM}</code></p>`;
-        landcoverData = [];
+            '<p class="text-slate-400 italic text-center py-8">Could not load landcover.json. Run the analysis script first.</p>';
+        return;
     }
 
-    // Update heading
-    const heading = document.getElementById('landcover-heading');
-    if (heading) heading.textContent = `Surrounding Land Cover (${BUFFER_RADIUS_LABELS[radiusM]} radius)`;
-
-    // Fetch species data for the selected date range
-    const dateFrom = document.getElementById('analysis-date-from').value;
-    const dateTo = document.getElementById('analysis-date-to').value;
-    const statusEl = document.getElementById('analysis-params-status');
-    if (statusEl) statusEl.textContent = 'Fetching bird data from BirdWeather...';
-
-    analysisSpeciesData = await Promise.all(
-        STATION_REGISTER.map(s => fetchSpeciesForAnalysis(s, dateFrom, dateTo))
-    );
-    analysisDateFrom = dateFrom;
-    analysisDateTo = dateTo;
-
-    if (statusEl) statusEl.textContent = `Bird data: ${dateFrom} to ${dateTo} · Buffer: ${BUFFER_RADIUS_LABELS[radiusM]}`;
-
-    // Also ensure main species data is loaded (other views need it)
+    // Ensure species data is loaded for diversity metrics
     if (!speciesDataLoaded) {
-        cachedSpeciesData = analysisSpeciesData;
+        cachedSpeciesData = await Promise.all(STATION_REGISTER.map(s => fetchSpeciesData(s)));
         speciesDataLoaded = true;
     }
 
-    renderStationMap();
-    refreshAnalysisCharts();
-    analysisLoaded = true;
-}
+    // Sort stations by total native vegetation (descending)
+    const sorted = [...landcoverData].sort((a, b) => {
+        const aNative = a.landcover_1km.native_woody_pct + a.landcover_1km.native_grassland_pct;
+        const bNative = b.landcover_1km.native_woody_pct + b.landcover_1km.native_grassland_pct;
+        return bNative - aNative;
+    });
 
-// ─── Station Map (Leaflet + ESRI Satellite) ───
-let stationMap = null;
-let stationMarkerLayer = null;
-
-function ensureMapInitialised() {
-    const mapEl = document.getElementById('station-map');
-    if (!mapEl) return false;
-
-    if (stationMap) return true; // already initialised
-
-    // Centre on the mean lat/lon of all stations (prefer config overrides)
-    const meanLat = landcoverData.reduce((s, d) => {
-        const reg = STATION_REGISTER.find(r => r.name === d.name);
-        return s + (reg?.latOverride ?? d.lat);
-    }, 0) / landcoverData.length;
-    const meanLon = landcoverData.reduce((s, d) => {
-        const reg = STATION_REGISTER.find(r => r.name === d.name);
-        return s + (reg?.lonOverride ?? d.lon);
-    }, 0) / landcoverData.length;
-
-    stationMap = L.map(mapEl, { scrollWheelZoom: true }).setView([meanLat, meanLon], 10);
-
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri',
-        maxZoom: 18,
-    }).addTo(stationMap);
-
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 18,
-        opacity: 0.6,
-    }).addTo(stationMap);
-
-    stationMarkerLayer = L.layerGroup().addTo(stationMap);
-    return true;
-}
-
-function renderStationMap() {
-    if (!landcoverData || landcoverData.length === 0) return;
-    if (!ensureMapInitialised()) return;
-
-    // Clear existing markers
-    stationMarkerLayer.clearLayers();
-
-    // Use the same project filter as the charts
-    const filtered = getFilteredLandcover();
-
-    const markers = [];
-    for (const station of filtered) {
-        const reg = STATION_REGISTER.find(s => s.name === station.name);
-        const siteName = reg?.site || '';
-        const project = reg?.project || '';
-        const nativeWoody = station.landcover_1km.native_woody_pct;
-
-        // Use coordinate overrides from config if available (corrects BirdWeather GPS errors)
-        const lat = reg?.latOverride ?? station.lat;
-        const lon = reg?.lonOverride ?? station.lon;
-
-        const marker = L.circleMarker([lat, lon], {
-            radius: 8,
-            fillColor: '#f59e0b',
-            color: '#fff',
-            weight: 2,
-            fillOpacity: 0.9,
-        });
-
-        marker.bindTooltip(station.name, {
-            permanent: false,
-            direction: 'top',
-            offset: [0, -10],
-            className: 'station-tooltip',
-        });
-
-        marker.bindPopup(
-            `<strong>${station.name}</strong><br>`
-            + (siteName ? `${siteName}<br>` : '')
-            + (project ? `<em>${project}</em><br>` : '')
-            + `Native woody: ${nativeWoody}%<br>`
-            + `${lat.toFixed(5)}, ${lon.toFixed(5)}`
-        );
-
-        stationMarkerLayer.addLayer(marker);
-        markers.push(marker);
-    }
-
-    // Fit bounds to visible markers
-    if (markers.length > 0) {
-        const group = L.featureGroup(markers);
-        stationMap.fitBounds(group.getBounds().pad(0.15));
-    }
-}
-
-function getFilteredLandcover() {
-    const selectedProject = projectFilter.value;
-    let filtered = landcoverData;
-    if (selectedProject !== 'all') {
-        const projectStationNames = new Set(
-            STATION_REGISTER.filter(s => s.project === selectedProject).map(s => s.name)
-        );
-        filtered = landcoverData.filter(s => projectStationNames.has(s.name));
-    }
-    return [...filtered].sort((a, b) => b.landcover_1km.native_woody_pct - a.landcover_1km.native_woody_pct);
-}
-
-function refreshAnalysisCharts() {
-    if (!landcoverData || landcoverData.length === 0) return;
-    const sorted = getFilteredLandcover();
-    renderStationMap();
     renderLandcoverChart(sorted);
     renderScatterPlots(sorted);
+    analysisLoaded = true;
 }
 
 function renderLandcoverChart(sorted) {
@@ -1512,224 +1208,112 @@ function renderLandcoverChart(sorted) {
     });
 }
 
-let rarefiedChart = null;
-let pielouChart = null;
-
 function renderScatterPlots(sorted) {
-    const minDays = parseInt(document.getElementById('min-days-filter')?.value || '0', 10);
-    const minDet = parseInt(document.getElementById('min-detections-filter')?.value || '0', 10);
-
-    // Build scatter data with all metrics (use analysis-specific species data if available)
-    const speciesSource = analysisSpeciesData || cachedSpeciesData;
-    const allData = sorted.map(station => {
+    // Build scatter data: native veg % vs species richness and Shannon H
+    const scatterData = sorted.map(station => {
         const stationIdx = STATION_REGISTER.findIndex(s => s.name === station.name);
-        const speciesList = stationIdx >= 0 ? (speciesSource[stationIdx] || []) : [];
+        const speciesList = stationIdx >= 0 ? (cachedSpeciesData[stationIdx] || []) : [];
         const filtered = filterMisids(speciesList);
-        const nDet = totalDetections(filtered);
         const richness = filtered.length;
         const H = shannonDiversity(filtered);
-        const J = pielouEvenness(filtered);
-        const nativeWoody = station.landcover_1km.native_woody_pct;
-        const reg = STATION_REGISTER[stationIdx];
-        const days = reg ? stationDaysActive(reg) : 0;
-        return { name: station.name, nativeWoody, richness, H, J, nDet, days, filtered };
+        const nativePct = station.landcover_1km.native_woody_pct + station.landcover_1km.native_grassland_pct;
+        return { name: station.name, nativePct, richness, H };
     });
 
-    // Apply filters
-    const scatterData = allData.filter(d => d.days >= minDays && d.nDet >= minDet);
-
-    // Determine rarefaction sample size (minimum total detections across included stations)
-    const rarefySample = scatterData.length > 0
-        ? Math.min(...scatterData.map(d => d.nDet))
-        : 0;
-
-    // Compute rarefied richness at that common sample size
-    for (const d of scatterData) {
-        d.rareRich = rarefiedRichness(d.filtered, rarefySample);
-    }
-
-    // Station count message
-    const countEl = document.getElementById('scatter-station-count');
-    if (countEl) {
-        const excluded = sorted.length - scatterData.length;
-        countEl.textContent = `Showing ${scatterData.length} of ${sorted.length} stations`
-            + (excluded > 0 ? ` (${excluded} excluded by filters)` : '')
-            + (rarefySample > 0 ? ` · Rarefied to ${rarefySample} detections` : '');
-    }
-
-    // Shared x-axis max: round up to nearest 10 above the highest native woody %
-    const xMax = scatterData.length > 0
-        ? Math.ceil(Math.max(...scatterData.map(d => d.nativeWoody)) / 10) * 10
-        : 100;
-
-    // ── Helper to build a scatter chart ──
-    function makeScatter({ canvasId, chartRef, pts, color, yLabel, tooltipFn }) {
-        const trend = trendlineDataset(pts, color);
-        if (chartRef) chartRef.destroy();
-        const ctx = document.getElementById(canvasId).getContext('2d');
-        const datasets = [{
-            data: pts,
-            backgroundColor: color,
-            pointRadius: 6,
-            pointHoverRadius: 9,
-        }];
-        if (trend) datasets.push(trend);
-
-        return new Chart(ctx, {
-            type: 'scatter',
-            data: { datasets },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        title: { display: true, text: '% Native Woody Vegetation (1 km)', font: { size: 12 } },
-                        ticks: { callback: v => v + '%' },
-                        min: 0, max: xMax,
-                        grid: { color: '#f1f5f9' },
-                    },
-                    y: {
-                        title: { display: true, text: yLabel, font: { size: 12 } },
-                        beginAtZero: true,
-                        grid: { color: '#f1f5f9' },
-                    },
+    // Richness scatter
+    if (richnessChart) richnessChart.destroy();
+    const ctx1 = document.getElementById('richness-scatter').getContext('2d');
+    richnessChart = new Chart(ctx1, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Species Richness',
+                data: scatterData.map(d => ({ x: d.nativePct, y: d.richness })),
+                backgroundColor: '#0d9488',
+                pointRadius: 6,
+                pointHoverRadius: 9,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    title: { display: true, text: '% Native Vegetation (1 km)', font: { size: 12 } },
+                    ticks: { callback: v => v + '%' },
+                    min: 0,
+                    grid: { color: '#f1f5f9' },
                 },
-                plugins: {
-                    legend: {
-                        display: true,
-                        labels: { filter: item => item.text && item.text.startsWith('Trend'), font: { size: 11 } },
-                    },
-                    tooltip: { callbacks: { label: tooltipFn } },
+                y: {
+                    title: { display: true, text: 'Species Richness', font: { size: 12 } },
+                    beginAtZero: true,
+                    grid: { color: '#f1f5f9' },
                 },
             },
-        });
-    }
-
-    // 1. Raw species richness
-    richnessChart = makeScatter({
-        canvasId: 'richness-scatter',
-        chartRef: richnessChart,
-        pts: scatterData.map(d => ({ x: d.nativeWoody, y: d.richness })),
-        color: '#0d9488',
-        yLabel: 'Species Richness (raw)',
-        tooltipFn: ctx => {
-            if (ctx.datasetIndex > 0) return null;
-            const d = scatterData[ctx.dataIndex];
-            return `${d.name}: ${d.richness} spp (${d.nDet} det), ${d.nativeWoody.toFixed(1)}% woody`;
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const d = scatterData[ctx.dataIndex];
+                            return `${d.name}: ${d.richness} species, ${d.nativePct.toFixed(1)}% native`;
+                        },
+                    },
+                },
+            },
         },
     });
 
-    // 2. Rarefied richness
-    rarefiedChart = makeScatter({
-        canvasId: 'rarefied-scatter',
-        chartRef: rarefiedChart,
-        pts: scatterData.map(d => ({ x: d.nativeWoody, y: Math.round(d.rareRich * 10) / 10 })),
-        color: '#059669',
-        yLabel: `Rarefied Richness (n=${rarefySample})`,
-        tooltipFn: ctx => {
-            if (ctx.datasetIndex > 0) return null;
-            const d = scatterData[ctx.dataIndex];
-            return `${d.name}: ${d.rareRich.toFixed(1)} spp (rarefied), ${d.nativeWoody.toFixed(1)}% woody`;
+    // Shannon scatter
+    if (shannonChart) shannonChart.destroy();
+    const ctx2 = document.getElementById('shannon-scatter').getContext('2d');
+    shannonChart = new Chart(ctx2, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Shannon Diversity (H′)',
+                data: scatterData.map(d => ({ x: d.nativePct, y: Math.round(d.H * 100) / 100 })),
+                backgroundColor: '#7c3aed',
+                pointRadius: 6,
+                pointHoverRadius: 9,
+            }],
         },
-    });
-
-    // 3. Shannon H'
-    shannonChart = makeScatter({
-        canvasId: 'shannon-scatter',
-        chartRef: shannonChart,
-        pts: scatterData.map(d => ({ x: d.nativeWoody, y: Math.round(d.H * 100) / 100 })),
-        color: '#7c3aed',
-        yLabel: "Shannon H′",
-        tooltipFn: ctx => {
-            if (ctx.datasetIndex > 0) return null;
-            const d = scatterData[ctx.dataIndex];
-            return `${d.name}: H′=${d.H.toFixed(2)}, ${d.nativeWoody.toFixed(1)}% woody`;
-        },
-    });
-
-    // 4. Pielou's J
-    pielouChart = makeScatter({
-        canvasId: 'pielou-scatter',
-        chartRef: pielouChart,
-        pts: scatterData.map(d => ({ x: d.nativeWoody, y: Math.round(d.J * 1000) / 1000 })),
-        color: '#d97706',
-        yLabel: "Pielou's J (evenness)",
-        tooltipFn: ctx => {
-            if (ctx.datasetIndex > 0) return null;
-            const d = scatterData[ctx.dataIndex];
-            return `${d.name}: J=${d.J.toFixed(3)}, ${d.nativeWoody.toFixed(1)}% woody`;
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    title: { display: true, text: '% Native Vegetation (1 km)', font: { size: 12 } },
+                    ticks: { callback: v => v + '%' },
+                    min: 0,
+                    grid: { color: '#f1f5f9' },
+                },
+                y: {
+                    title: { display: true, text: 'Shannon Diversity (H′)', font: { size: 12 } },
+                    beginAtZero: true,
+                    grid: { color: '#f1f5f9' },
+                },
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const d = scatterData[ctx.dataIndex];
+                            return `${d.name}: H′=${d.H.toFixed(2)}, ${d.nativePct.toFixed(1)}% native`;
+                        },
+                    },
+                },
+            },
         },
     });
 }
-
-// ─── Scatter filter controls trigger re-render ───
-// ─── Min-days / min-detections just re-render scatters (no re-fetch) ───
-['min-days-filter', 'min-detections-filter'].forEach(id => {
-    document.getElementById(id)?.addEventListener('change', () => {
-        if (currentView === 'analysis' && landcoverData.length > 0) {
-            const sorted = getFilteredLandcover();
-            renderScatterPlots(sorted);
-        }
-    });
-});
-
-// ─── Apply button: re-fetch species data and/or reload landcover for new radius ───
-document.getElementById('apply-analysis-params')?.addEventListener('click', async () => {
-    const statusEl = document.getElementById('analysis-params-status');
-    const radiusM = parseInt(document.getElementById('buffer-radius')?.value || '1000', 10);
-    const dateFrom = document.getElementById('analysis-date-from').value;
-    const dateTo = document.getElementById('analysis-date-to').value;
-
-    if (!dateFrom || !dateTo) {
-        if (statusEl) statusEl.textContent = 'Please set both date fields.';
-        return;
-    }
-
-    const radiusChanged = radiusM !== currentBufferRadius;
-    const datesChanged = dateFrom !== analysisDateFrom || dateTo !== analysisDateTo;
-
-    // Reload landcover if buffer radius changed
-    if (radiusChanged) {
-        const lcFile = landcoverJsonFilename(radiusM);
-        if (statusEl) statusEl.textContent = `Loading ${lcFile}...`;
-        try {
-            const resp = await fetch(lcFile);
-            if (!resp.ok) throw new Error(`${lcFile} not found`);
-            landcoverData = await resp.json();
-            currentBufferRadius = radiusM;
-            const heading = document.getElementById('landcover-heading');
-            if (heading) heading.textContent = `Surrounding Land Cover (${BUFFER_RADIUS_LABELS[radiusM]} radius)`;
-        } catch (err) {
-            if (statusEl) statusEl.textContent = `Could not load ${lcFile}. Run: python landcover.py --radius ${radiusM}`;
-            return;
-        }
-    }
-
-    // Re-fetch species data if dates changed
-    if (datesChanged) {
-        if (statusEl) statusEl.textContent = `Fetching bird data ${dateFrom} to ${dateTo}...`;
-        analysisSpeciesData = await Promise.all(
-            STATION_REGISTER.map(s => fetchSpeciesForAnalysis(s, dateFrom, dateTo))
-        );
-        analysisDateFrom = dateFrom;
-        analysisDateTo = dateTo;
-    }
-
-    if (statusEl) statusEl.textContent = `Bird data: ${analysisDateFrom} to ${analysisDateTo} · Buffer: ${BUFFER_RADIUS_LABELS[currentBufferRadius]}`;
-
-    // Re-render everything
-    refreshAnalysisCharts();
-});
 
 // ─── Shared Controls ───
 populateProjectFilter();
 
 projectFilter.addEventListener('change', () => {
     if (currentView === 'status') displayTable(projectFilter.value);
-    else if (currentView === 'analysis') {
-        updateLatestDeployHint();
-        refreshAnalysisCharts();
-    }
     else displayCards(projectFilter.value);
 });
 
