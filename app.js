@@ -1288,7 +1288,6 @@ function initAnalysisDatePickers() {
     if (!toEl.value) {
         toEl.value = new Date().toISOString().split('T')[0];
     }
-    // Sets from-date to latest deployment and updates the hint
     updateLatestDeployHint();
 }
 
