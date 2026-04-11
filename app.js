@@ -1281,9 +1281,6 @@ function updateLatestDeployHint() {
     if (filtered.length === 0) { hintEl.textContent = ''; return; }
     const latest = filtered.map(s => s.installed).sort().pop();
     hintEl.textContent = `Latest deployment: ${latest}`;
-    // Always sync the from-date to the latest deployment
-    const fromEl = document.getElementById('analysis-date-from');
-    if (fromEl) fromEl.value = latest;
 }
 
 function initAnalysisDatePickers() {
@@ -1725,4 +1722,52 @@ projectFilter.addEventListener('change', () => {
     if (currentView === 'status') displayTable(projectFilter.value);
     else if (currentView === 'analysis') {
         updateLatestDeployHint();
-   
+        refreshAnalysisCharts();
+    }
+    else displayCards(projectFilter.value);
+});
+
+sortSelect.addEventListener('change', () => {
+    displayCards(projectFilter.value);
+});
+
+misidToggle.addEventListener('change', () => {
+    if (currentView === 'data') {
+        // Re-render cards immediately with new filter state
+        displayCards(projectFilter.value);
+        // Re-fetch newest species in background with updated filter
+        cachedNewestSpecies = new Array(STATION_REGISTER.length).fill(null);
+        const batchSize = 6;
+        (async () => {
+            for (let i = 0; i < STATION_REGISTER.length; i += batchSize) {
+                const batch = STATION_REGISTER.slice(i, i + batchSize).map((station, j) => {
+                    const idx = i + j;
+                    return fetchNewestSpecies(station, cachedSpeciesData[idx]).then(result => {
+                        cachedNewestSpecies[idx] = result;
+                    });
+                });
+                await Promise.all(batch);
+            }
+            displayCards(projectFilter.value);
+        })();
+    }
+});
+
+document.getElementById('refresh-btn').addEventListener('click', () => {
+    if (currentView === 'status') {
+        tbody.innerHTML = `<tr id="loading-row"><td colspan="5" class="py-12 text-center text-slate-500"><span class="inline-block animate-pulse">Refreshing BirdPuc Data...</span></td></tr>`;
+        renderTable();
+    } else if (currentView === 'review') {
+        loadReviews();
+    } else if (currentView === 'analysis') {
+        analysisLoaded = false;
+        loadAnalysisView();
+    } else {
+        speciesDataLoaded = false;
+        cachedNewestSpecies = [];
+        loadSpeciesData();
+    }
+});
+
+// Boot
+renderTable();
