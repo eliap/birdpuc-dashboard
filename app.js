@@ -27,6 +27,10 @@ const timelineClose = document.getElementById('timeline-close');
 const timelineTitle = document.getElementById('timeline-title');
 const timelineSubtitle = document.getElementById('timeline-subtitle');
 const timelineContent = document.getElementById('timeline-content');
+const timelinePrint = document.getElementById('timeline-print');
+
+// State for the currently displayed timeline (used by print view)
+let currentTimelineData = { station: null, timeline: [] };
 
 // Build a Set for fast misID lookups
 const misidSet = new Set(MISIDENTIFIED_SPECIES.map(s => s.toLowerCase()));
@@ -475,7 +479,11 @@ function openTimelineModal(station, stationIndex) {
     const speciesList = cachedSpeciesData[stationIndex] || [];
     const filtered = filterMisids(speciesList);
 
+    currentTimelineData = { station, timeline: [] };
+
     fetchSpeciesTimeline(station, filtered).then(timeline => {
+        currentTimelineData.timeline = timeline;
+
         if (timeline.length === 0) {
             timelineContent.innerHTML = `<p class="text-slate-400 italic text-center py-8">No species data available.</p>`;
             return;
@@ -686,6 +694,315 @@ document.addEventListener('keydown', (e) => {
         closeTimelineModal();
     }
 });
+
+// ─── Print Summary View ───
+function openPrintSummary() {
+    const { station, timeline } = currentTimelineData;
+    if (!station || timeline.length === 0) return;
+
+    const hidingMisids = misidToggle.checked;
+    const stationLabel = station.name;
+    const siteLabel = station.site || station.project;
+    const installLabel = formatDate(station.installed);
+    const totalSpecies = timeline.length;
+
+    // Group by week
+    const weekGroups = [];
+    let currentGroup = null;
+    for (const entry of timeline) {
+        if (!currentGroup || currentGroup.week !== entry.firstWeek) {
+            currentGroup = { week: entry.firstWeek, species: [] };
+            weekGroups.push(currentGroup);
+        }
+        currentGroup.species.push(entry);
+    }
+    // Reverse so oldest week first (chronological) for the printout
+    weekGroups.reverse();
+    weekGroups.forEach(g => g.species.reverse());
+
+    // Build species JSON for the page to use when fetching iNat photos
+    const speciesJson = JSON.stringify(timeline.map(e => ({
+        commonName: e.commonName,
+        scientificName: e.scientificName,
+        count: e.count,
+        firstWeek: e.firstWeek
+    })));
+
+    // Build the week sections HTML
+    let weeksHtml = '';
+    for (const group of weekGroups) {
+        const cards = group.species.map(sp => `
+            <div class="card">
+                <div class="photo-container" id="photo-${CSS.escape(sp.commonName.replace(/[^a-zA-Z0-9]/g, '_'))}">
+                    <div class="photo-placeholder">Loading...</div>
+                </div>
+                <div class="card-body">
+                    <div class="species-name">${sp.commonName}</div>
+                    <div class="scientific-name">${sp.scientificName}</div>
+                    <div class="detection-count">${sp.count.toLocaleString()} detections</div>
+                </div>
+            </div>
+        `).join('');
+
+        weeksHtml += `
+            <div class="week-section">
+                <h3 class="week-heading">Week of ${group.week}</h3>
+                <div class="species-grid">${cards}</div>
+            </div>
+        `;
+    }
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${stationLabel} — Detection Timeline</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Open Sans', sans-serif;
+            color: #1e293b;
+            background: #fff;
+            padding: 24px 32px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #0d9488;
+        }
+        .header h1 {
+            font-family: 'Amatic SC', cursive;
+            font-size: 48px;
+            font-weight: 700;
+            color: #115e59;
+            line-height: 1.1;
+        }
+        .header .subtitle {
+            font-size: 16px;
+            color: #64748b;
+            margin-top: 6px;
+        }
+        .header .station-info {
+            margin-top: 12px;
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+        .header .info-item {
+            font-size: 13px;
+            color: #475569;
+        }
+        .header .info-item strong {
+            color: #0d9488;
+        }
+        .summary-bar {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            color: #475569;
+        }
+        .summary-bar span strong {
+            color: #115e59;
+            font-weight: 700;
+        }
+        .week-section {
+            margin-bottom: 24px;
+        }
+        .week-heading {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0d9488;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 12px;
+        }
+        .species-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+        .card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+            break-inside: avoid;
+        }
+        .photo-container {
+            width: 100%;
+            aspect-ratio: 1;
+            background: #f1f5f9;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .photo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .photo-placeholder {
+            color: #94a3b8;
+            font-size: 11px;
+        }
+        .photo-credit {
+            font-size: 8px;
+            color: #94a3b8;
+            text-align: right;
+            padding: 1px 4px;
+            background: #f8fafc;
+        }
+        .photo-credit a {
+            color: #94a3b8;
+            text-decoration: none;
+        }
+        .card-body {
+            padding: 8px 10px;
+        }
+        .species-name {
+            font-weight: 700;
+            font-size: 13px;
+            color: #1e293b;
+            line-height: 1.2;
+        }
+        .scientific-name {
+            font-style: italic;
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 1px;
+        }
+        .detection-count {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+        .footer {
+            margin-top: 32px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        .footer a { color: #94a3b8; }
+        .no-print { margin: 16px auto; text-align: center; }
+        .no-print button {
+            background: #0d9488;
+            color: #fff;
+            font-weight: 700;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .no-print button:hover { background: #115e59; }
+
+        @media print {
+            body { padding: 12px 16px; }
+            .no-print { display: none; }
+            .header h1 { font-size: 36px; }
+            .species-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+            .card { border-color: #cbd5e1; }
+            .week-section { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Project Platypus — BirdPuc Network</h1>
+        <p class="subtitle">Detection Timeline Summary</p>
+        <div class="station-info">
+            <span class="info-item"><strong>Station:</strong> ${stationLabel}</span>
+            <span class="info-item"><strong>Site:</strong> ${siteLabel}</span>
+            <span class="info-item"><strong>Installed:</strong> ${installLabel}</span>
+        </div>
+    </div>
+
+    <div class="summary-bar">
+        <span><strong>${totalSpecies}</strong> species detected</span>
+        <span>Newest first${hidingMisids ? ' · misIDs filtered' : ''}</span>
+        <span>Generated ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+    </div>
+
+    <div class="no-print">
+        <button onclick="window.print()">Print this page</button>
+    </div>
+
+    ${weeksHtml}
+
+    <div class="footer">
+        Bird photos sourced from <a href="https://www.inaturalist.org" target="_blank">iNaturalist</a> (Creative Commons licensed).
+        Acoustic monitoring by <a href="https://app.birdweather.com" target="_blank">BirdWeather</a> / BirdNET.
+    </div>
+
+    <script>
+    // Fetch bird photos from iNaturalist taxa API
+    const speciesData = ${speciesJson};
+
+    async function loadPhotos() {
+        // Batch in groups of 4 to be polite to the API
+        for (let i = 0; i < speciesData.length; i += 4) {
+            const batch = speciesData.slice(i, i + 4);
+            await Promise.all(batch.map(async (sp) => {
+                const containerId = 'photo-' + CSS.escape(sp.commonName.replace(/[^a-zA-Z0-9]/g, '_'));
+                const container = document.getElementById(containerId);
+                if (!container) return;
+
+                try {
+                    const res = await fetch('https://api.inaturalist.org/v1/taxa?q=' + encodeURIComponent(sp.commonName) + '&per_page=1&locale=en');
+                    const json = await res.json();
+                    if (json.results && json.results.length > 0 && json.results[0].default_photo) {
+                        const photo = json.results[0].default_photo;
+                        const imgUrl = photo.medium_url || photo.square_url || photo.url;
+                        const attribution = photo.attribution || '';
+                        if (imgUrl) {
+                            container.innerHTML = '<img src="' + imgUrl + '" alt="' + sp.commonName + '" loading="lazy">';
+                            // Add credit below photo
+                            const creditDiv = document.createElement('div');
+                            creditDiv.className = 'photo-credit';
+                            creditDiv.innerHTML = attribution.length > 60 ? attribution.substring(0, 57) + '...' : attribution;
+                            container.parentElement.insertBefore(creditDiv, container.nextSibling);
+                        } else {
+                            container.innerHTML = '<div class="photo-placeholder">No photo</div>';
+                        }
+                    } else {
+                        container.innerHTML = '<div class="photo-placeholder">No photo</div>';
+                    }
+                } catch (err) {
+                    container.innerHTML = '<div class="photo-placeholder">No photo</div>';
+                }
+            }));
+        }
+    }
+
+    loadPhotos();
+    </script>
+</body>
+</html>`;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+    }
+}
+
+timelinePrint.addEventListener('click', openPrintSummary);
 
 // ─── Card Building ───
 function buildCard(station, speciesList, newestSpecies, stationIndex) {

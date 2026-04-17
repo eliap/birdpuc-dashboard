@@ -300,11 +300,18 @@
                     <h2 id="timeline-title" class="font-bold text-lg text-teal-800"></h2>
                     <p id="timeline-subtitle" class="text-sm text-slate-500"></p>
                 </div>
+                <div class="flex items-center gap-2">
+                <button id="timeline-print" class="text-teal-600 hover:text-teal-800 transition-colors p-1" title="Open print summary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                </button>
                 <button id="timeline-close" class="text-slate-400 hover:text-slate-700 transition-colors p-1">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
+                </div>
             </div>
             <!-- Content -->
             <div id="timeline-content" class="flex-1 overflow-y-auto px-6 py-4">
