@@ -439,9 +439,11 @@ async function fetchSpeciesTimeline(station, fullSpeciesList) {
     const seen = new Set();
     const timeline = [];
 
+    const hidingMisids = misidToggle.checked;
     for (const result of cumulativeResults) {
         for (const entry of result.species) {
             const name = entry.species.commonName;
+            if (hidingMisids && isMisid(name)) continue;
             if (!seen.has(name)) {
                 seen.add(name);
                 const fullEntry = fullSpeciesList.find(s => s.species.commonName === name);
