@@ -704,60 +704,40 @@ function openPrintSummary() {
     const stationLabel = station.name;
     const siteLabel = station.site || station.project;
     const installLabel = formatDate(station.installed);
-    const totalSpecies = timeline.length;
 
-    // Group by week
-    const weekGroups = [];
-    let currentGroup = null;
-    for (const entry of timeline) {
-        if (!currentGroup || currentGroup.week !== entry.firstWeek) {
-            currentGroup = { week: entry.firstWeek, species: [] };
-            weekGroups.push(currentGroup);
-        }
-        currentGroup.species.push(entry);
-    }
-    // Reverse so oldest week first (chronological) for the printout
-    weekGroups.reverse();
-    weekGroups.forEach(g => g.species.reverse());
+    // Sort by detection count (most frequent first)
+    const sorted = [...timeline].sort((a, b) => b.count - a.count);
+    const totalSpecies = sorted.length;
+    const totalDetections = sorted.reduce((sum, s) => sum + s.count, 0);
 
     // Build species JSON for the page to use when fetching iNat photos
-    const speciesJson = JSON.stringify(timeline.map(e => ({
+    const speciesJson = JSON.stringify(sorted.map(e => ({
         commonName: e.commonName,
         scientificName: e.scientificName,
-        count: e.count,
-        firstWeek: e.firstWeek
+        count: e.count
     })));
 
-    // Build the week sections HTML
-    let weeksHtml = '';
-    for (const group of weekGroups) {
-        const cards = group.species.map(sp => `
-            <div class="card">
-                <div class="photo-container" id="photo-${CSS.escape(sp.commonName.replace(/[^a-zA-Z0-9]/g, '_'))}">
-                    <div class="photo-placeholder">Loading...</div>
-                </div>
-                <div class="card-body">
-                    <div class="species-name">${sp.commonName}</div>
-                    <div class="scientific-name">${sp.scientificName}</div>
-                    <div class="detection-count">${sp.count.toLocaleString()} detections</div>
-                </div>
+    // Build the card grid HTML
+    const cardsHtml = sorted.map((sp, i) => `
+        <div class="card">
+            <div class="rank">${i + 1}</div>
+            <div class="photo-container" id="photo-${sp.commonName.replace(/[^a-zA-Z0-9]/g, '_')}">
+                <div class="photo-placeholder">Loading...</div>
             </div>
-        `).join('');
-
-        weeksHtml += `
-            <div class="week-section">
-                <h3 class="week-heading">Week of ${group.week}</h3>
-                <div class="species-grid">${cards}</div>
+            <div class="card-body">
+                <div class="species-name">${sp.commonName}</div>
+                <div class="scientific-name">${sp.scientificName}</div>
+                <div class="detection-count">${sp.count.toLocaleString()} detections</div>
             </div>
-        `;
-    }
+        </div>
+    `).join('');
 
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${stationLabel} — Detection Timeline</title>
+    <title>${stationLabel} — Species Summary</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
@@ -815,19 +795,6 @@ function openPrintSummary() {
             color: #115e59;
             font-weight: 700;
         }
-        .week-section {
-            margin-bottom: 24px;
-        }
-        .week-heading {
-            font-size: 14px;
-            font-weight: 700;
-            color: #0d9488;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            padding-bottom: 6px;
-            border-bottom: 1px solid #e2e8f0;
-            margin-bottom: 12px;
-        }
         .species-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -839,6 +806,23 @@ function openPrintSummary() {
             overflow: hidden;
             background: #fff;
             break-inside: avoid;
+            position: relative;
+        }
+        .rank {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            background: rgba(13, 148, 136, 0.85);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
         }
         .photo-container {
             width: 100%;
@@ -864,10 +848,6 @@ function openPrintSummary() {
             text-align: right;
             padding: 1px 4px;
             background: #f8fafc;
-        }
-        .photo-credit a {
-            color: #94a3b8;
-            text-decoration: none;
         }
         .card-body {
             padding: 8px 10px;
@@ -918,14 +898,13 @@ function openPrintSummary() {
             .header h1 { font-size: 36px; }
             .species-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
             .card { border-color: #cbd5e1; }
-            .week-section { break-inside: avoid; }
         }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>Project Platypus — BirdPuc Network</h1>
-        <p class="subtitle">Detection Timeline Summary</p>
+        <p class="subtitle">Bird Species Detected at This Site</p>
         <div class="station-info">
             <span class="info-item"><strong>Station:</strong> ${stationLabel}</span>
             <span class="info-item"><strong>Site:</strong> ${siteLabel}</span>
@@ -935,31 +914,32 @@ function openPrintSummary() {
 
     <div class="summary-bar">
         <span><strong>${totalSpecies}</strong> species detected</span>
-        <span>Newest first${hidingMisids ? ' · misIDs filtered' : ''}</span>
-        <span>Generated ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+        <span><strong>${totalDetections.toLocaleString()}</strong> total detections</span>
+        <span>Ranked by frequency${hidingMisids ? ' · misIDs filtered' : ''}</span>
     </div>
 
     <div class="no-print">
         <button onclick="window.print()">Print this page</button>
     </div>
 
-    ${weeksHtml}
+    <div class="species-grid">
+        ${cardsHtml}
+    </div>
 
     <div class="footer">
-        Bird photos sourced from <a href="https://www.inaturalist.org" target="_blank">iNaturalist</a> (Creative Commons licensed).
+        Generated ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}.
+        Bird photos from <a href="https://www.inaturalist.org" target="_blank">iNaturalist</a> (Creative Commons).
         Acoustic monitoring by <a href="https://app.birdweather.com" target="_blank">BirdWeather</a> / BirdNET.
     </div>
 
     <script>
-    // Fetch bird photos from iNaturalist taxa API
     const speciesData = ${speciesJson};
 
     async function loadPhotos() {
-        // Batch in groups of 4 to be polite to the API
         for (let i = 0; i < speciesData.length; i += 4) {
             const batch = speciesData.slice(i, i + 4);
             await Promise.all(batch.map(async (sp) => {
-                const containerId = 'photo-' + CSS.escape(sp.commonName.replace(/[^a-zA-Z0-9]/g, '_'));
+                const containerId = 'photo-' + sp.commonName.replace(/[^a-zA-Z0-9]/g, '_');
                 const container = document.getElementById(containerId);
                 if (!container) return;
 
@@ -972,10 +952,9 @@ function openPrintSummary() {
                         const attribution = photo.attribution || '';
                         if (imgUrl) {
                             container.innerHTML = '<img src="' + imgUrl + '" alt="' + sp.commonName + '" loading="lazy">';
-                            // Add credit below photo
                             const creditDiv = document.createElement('div');
                             creditDiv.className = 'photo-credit';
-                            creditDiv.innerHTML = attribution.length > 60 ? attribution.substring(0, 57) + '...' : attribution;
+                            creditDiv.textContent = attribution.length > 60 ? attribution.substring(0, 57) + '...' : attribution;
                             container.parentElement.insertBefore(creditDiv, container.nextSibling);
                         } else {
                             container.innerHTML = '<div class="photo-placeholder">No photo</div>';
