@@ -20,13 +20,13 @@ export const STATION_REGISTER = [
     { name: "PPpuc20", id: "22401", project: "Wimmera CMA Landcare Fire Recovery Partnership", site: "Caroline Jordan, Kiata", installed: "2026-02-24" },
     { name: "PPpuc21", id: "22402", project: "Wimmera CMA Landcare Fire Recovery Partnership", site: "Steve Enticott, Kiata", installed: "2026-02-24" },
     { name: "MOpuc01", id: "23823", project: "Moyston VLG2025", site: "Comparison site with water", installed: "2026-03-08" },
-    { name: "NGpuc01", id: "19419", project: "Northern Grampians VLG2025", site: "Defined in each groups VLG", installed: "2026-03-22" },
-    { name: "NGpuc02", id: "24484", project: "Northern Grampians VLG2025", site: "Defined in each groups VLG", installed: "2026-03-22" },
-    { name: "ELpuc01", id: "24482", project: "Elmhurst VLG2025", site: "Defined in each groups VLG", installed: "2026-03-22" },
-    { name: "ELpuc02", id: "24483", project: "Elmhurst VLG2025", site: "Defined in each groups VLG", installed: "2026-03-22" },
-    { name: "JLpuc01", id: "15980", project: "Jallukar VLG2025", site: "", installed: "2025-08-31" },
-    { name: "JLpuc03", id: "24480", project: "Jallukar VLG2025", site: "Defined in each groups VLG", installed: "2026-03-22" },
-    { name: "JLpuc04", id: "24481", project: "Jallukar VLG2025", site: "Defined in each groups VLG", installed: "2026-03-22" },
+    { name: "NGpuc01", id: "19419", project: "Biolinks team landcare collab", site: "farm wetland site", installed: "2026-04-12" },
+    { name: "NGpuc02", id: "24484", project: "Biolinks team landcare collab", site: "farm wetland site", installed: "2026-04-12" },
+    { name: "ELpuc01", id: "24482", project: "Biolinks team landcare collab", site: "historic reveg site", installed: "2026-04-12" },
+    { name: "ELpuc02", id: "24483", project: "Biolinks team landcare collab", site: "historic reveg site", installed: "2026-04-12" },
+    { name: "JLpuc01", id: "15980", project: "Biolinks team landcare collab", site: "WAMA", installed: "2025-08-31" },
+    { name: "JLpuc03", id: "24480", project: "Biolinks team landcare collab", site: "historic bird data site", installed: "2026-04-12" },
+    { name: "JLpuc04", id: "24481", project: "Biolinks team landcare collab", site: "historic bird data site", installed: "2026-04-12" },
     { name: "SUpuc01", id: "24534", project: "Stawell Urban VLG2025", site: "", installed: null }
 ];
 
