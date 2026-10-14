@@ -66,11 +66,71 @@ function formatTime(isoStr) {
         ' ' + d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 }
 
-// Currently playing audio element (so we can stop previous when starting new)
+// Currently playing clip (so we can stop previous when starting new)
 let currentAudio = null;
-// Web Audio API context for volume boost
+// Web Audio API context for playback
 let audioCtx = null;
-const AUDIO_GAIN = 4.0; // 4x volume boost
+// PUC soundscapes are recorded very quietly (peaks around -55 to -70 dBFS), so a
+// fixed boost isn't enough. Each clip is normalised so its loudest point in the
+// detection window sits just under full scale, capped so near-silent clips don't
+// turn into roaring hiss.
+const AUDIO_TARGET_PEAK = 0.9;
+const AUDIO_MAX_GAIN = 2000; // ~+66 dB
+const decodedClips = new Map(); // url -> Promise<AudioBuffer>
+
+function decodeClip(url) {
+    if (!decodedClips.has(url)) {
+        const p = fetch(url)
+            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); })
+            .then(buf => new Promise((resolve, reject) => audioCtx.decodeAudioData(buf, resolve, reject)));
+        p.catch(() => decodedClips.delete(url));
+        decodedClips.set(url, p);
+    }
+    return decodedClips.get(url);
+}
+
+// Play [start, end] seconds of a soundscape, normalised. Returns a handle with pause().
+// onDone fires once when playback finishes, fails, or is stopped.
+function playClip(url, start, end, onDone) {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    let stopped = false, node = null, finished = false;
+    const finish = () => { if (!finished) { finished = true; onDone && onDone(); } };
+    const handle = {
+        pause() { stopped = true; if (node) { try { node.stop(); } catch (_) {} } finish(); }
+    };
+
+    decodeClip(url).then(buffer => {
+        if (stopped) return;
+        const sr = buffer.sampleRate;
+        const s0 = Math.max(0, Math.floor(start * sr));
+        const s1 = Math.min(buffer.length, Math.ceil(end * sr));
+        let peak = 0;
+        for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+            const data = buffer.getChannelData(ch);
+            for (let i = s0; i < s1; i++) { const v = Math.abs(data[i]); if (v > peak) peak = v; }
+        }
+        const gain = peak > 0 ? Math.min(AUDIO_TARGET_PEAK / peak, AUDIO_MAX_GAIN) : 1;
+
+        node = audioCtx.createBufferSource();
+        node.buffer = buffer;
+        const gainNode = audioCtx.createGain();
+        gainNode.gain.value = gain;
+        // Limiter as a safety net against clipping
+        const limiter = audioCtx.createDynamicsCompressor();
+        limiter.threshold.value = -3;
+        limiter.knee.value = 0;
+        limiter.ratio.value = 20;
+        limiter.attack.value = 0.001;
+        limiter.release.value = 0.1;
+        node.connect(gainNode).connect(limiter).connect(audioCtx.destination);
+        node.onended = finish;
+        node.start(0, start, Math.max(0.1, end - start));
+    }).catch(err => { console.warn('Audio playback failed:', err); finish(); });
+
+    return handle;
+}
 
 function formatDate(dateStr) {
     if (!dateStr) return 'Unknown';
@@ -611,45 +671,13 @@ function openTimelineModal(station, stationIndex) {
                             });
                         }
 
-                        const audio = new Audio(url);
-                        audio.crossOrigin = 'anonymous';
-                        currentAudio = audio;
-
-                        // Route through Web Audio API gain node for volume boost
-                        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                        const source = audioCtx.createMediaElementSource(audio);
-                        const gainNode = audioCtx.createGain();
-                        gainNode.gain.value = AUDIO_GAIN;
-                        source.connect(gainNode);
-                        gainNode.connect(audioCtx.destination);
-
-                        // Change icon to pause
                         const icon = playBtn.querySelector('.play-icon');
                         icon.innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
-
-                        audio.addEventListener('loadedmetadata', () => {
-                            audio.currentTime = start;
-                            audio.play();
-                        });
-
-                        // Stop at end time
-                        audio.addEventListener('timeupdate', () => {
-                            if (audio.currentTime >= end) {
-                                audio.pause();
-                                icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
-                                currentAudio = null;
-                            }
-                        });
-
-                        audio.addEventListener('ended', () => {
+                        const clip = playClip(url, start, end, () => {
                             icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
-                            currentAudio = null;
+                            if (currentAudio === clip) currentAudio = null;
                         });
-
-                        audio.addEventListener('error', () => {
-                            icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
-                            currentAudio = null;
-                        });
+                        currentAudio = clip;
                     });
                 });
 
@@ -1321,33 +1349,13 @@ function displayReviews(reviews) {
                 });
             }
 
-            const audio = new Audio(url);
-            audio.crossOrigin = 'anonymous';
-            currentAudio = audio;
-
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const source = audioCtx.createMediaElementSource(audio);
-            const gainNode = audioCtx.createGain();
-            gainNode.gain.value = AUDIO_GAIN;
-            source.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
             const icon = playBtn.querySelector('.play-icon');
             icon.innerHTML = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
-
-            audio.addEventListener('loadedmetadata', () => {
-                audio.currentTime = start;
-                audio.play();
+            const clip = playClip(url, start, end, () => {
+                icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+                if (currentAudio === clip) currentAudio = null;
             });
-            audio.addEventListener('timeupdate', () => {
-                if (audio.currentTime >= end) {
-                    audio.pause();
-                    icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
-                    currentAudio = null;
-                }
-            });
-            audio.addEventListener('ended', () => { icon.innerHTML = '<path d="M8 5v14l11-7z"/>'; currentAudio = null; });
-            audio.addEventListener('error', () => { icon.innerHTML = '<path d="M8 5v14l11-7z"/>'; currentAudio = null; });
+            currentAudio = clip;
         });
     });
 
