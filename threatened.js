@@ -27,6 +27,8 @@ export const THREATENED_SPECIES = [
     { common: 'Malleefowl',                 sci: 'Leipoa ocellata',                  ffg: 'Vulnerable',            epbc: 'Vulnerable' },
     { common: 'Bush Stone-curlew',          sci: 'Burhinus grallarius',              ffg: 'Critically Endangered', epbc: '',            aka: ['Bush Thick-knee'] },
     { common: 'White-throated Needletail',  sci: 'Hirundapus caudacutus',            ffg: 'Vulnerable',            epbc: 'Vulnerable' },
+    { common: 'Crested Bellbird',           sci: 'Oreoica gutturalis',               ffg: 'Endangered',            epbc: '' },
+    { common: 'Apostlebird',                sci: 'Struthidea cinerea',               ffg: 'Vulnerable',            epbc: '' },
 
     // Owls and raptors
     { common: 'Powerful Owl',               sci: 'Ninox strenua',                    ffg: 'Vulnerable',            epbc: '' },
@@ -47,4 +49,7 @@ export const THREATENED_SPECIES = [
     { common: 'Freckled Duck',              sci: 'Stictonetta naevosa',              ffg: 'Endangered',            epbc: '' },
     { common: 'Musk Duck',                  sci: 'Biziura lobata',                   ffg: 'Vulnerable',            epbc: '' },
     { common: 'Australasian Shoveler',      sci: 'Spatula rhynchotis',               ffg: 'Vulnerable',            epbc: '' },
+    { common: "Lewin's Rail",               sci: 'Lewinia pectoralis',               ffg: 'Vulnerable',            epbc: '' },
+    { common: 'Little Egret',               sci: 'Egretta garzetta nigripes',        ffg: 'Endangered',            epbc: '',            note: 'Australian subspecies' },
+    { common: 'Magpie Goose',               sci: 'Anseranas semipalmata',            ffg: 'Vulnerable',            epbc: '' },
 ];
