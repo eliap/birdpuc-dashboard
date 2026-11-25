@@ -321,7 +321,7 @@ function displayTable(filterProject) {
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-50 transition-colors duration-150";
         tr.innerHTML = `
-            <td class="py-4 px-6 font-bold text-teal-800 whitespace-nowrap">${station.name}${statusThreatBadge(index)}</td>
+            <td class="py-4 px-6 font-bold text-teal-800 whitespace-nowrap">${station.name}</td>
             <td class="py-4 px-6 text-center">${statusBadge}</td>
             <td class="py-4 px-6 text-center">${activityBadge}</td>
             <td class="py-4 px-6 text-slate-700">${station.project}</td>
@@ -334,19 +334,9 @@ function displayTable(filterProject) {
     }
 }
 
-function statusThreatBadge(index) {
-    if (!speciesDataLoaded) return '';
-    const list = threatenedIn(cachedSpeciesData[index]);
-    if (!list.length) return '';
-    const names = list.map(s => s.threat.common).join(', ');
-    return ` <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200 align-middle" title="${names}">${list.length} threatened</span>`;
-}
-
 async function renderTable() {
     cachedStationData = await Promise.all(STATION_REGISTER.map(s => fetchStationData(s)));
     displayTable(projectFilter.value);
-    // Species + reviews load in the background so threatened badges can appear
-    ensureSpeciesData().then(() => { if (currentView === 'status') displayTable(projectFilter.value); });
 }
 
 // ─── Data View ───
@@ -394,12 +384,12 @@ async function fetchSpeciesData(station) {
 }
 
 // Fetch recent detections with audio for a species at a station
-async function fetchDetections(stationId, speciesId, installedDate, withAudio = true) {
+async function fetchDetections(stationId, speciesId, installedDate) {
     const today = new Date().toISOString().split('T')[0];
     const period = installedDate ? { from: installedDate, to: today } : { count: 3, unit: "month" };
     const query = `
-        query Detections($stationIds: [ID!]!, $speciesId: ID!, $period: InputDuration, $withAudio: Boolean) {
-            detections(stationIds: $stationIds, speciesId: $speciesId, period: $period, first: 10, validSoundscape: $withAudio) {
+        query Detections($stationIds: [ID!]!, $speciesId: ID!, $period: InputDuration) {
+            detections(stationIds: $stationIds, speciesId: $speciesId, period: $period, first: 10, validSoundscape: true) {
                 edges {
                     node {
                         id
@@ -421,7 +411,7 @@ async function fetchDetections(stationId, speciesId, installedDate, withAudio = 
         const res = await fetch(GRAPHQL_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, variables: { stationIds: [String(stationId)], speciesId: String(speciesId), period, withAudio } })
+            body: JSON.stringify({ query, variables: { stationIds: [String(stationId)], speciesId: String(speciesId), period } })
         });
         const json = await res.json();
         if (!json.errors && json.data.detections) {
@@ -1232,7 +1222,6 @@ function buildCard(station, speciesList, newestSpecies, stationIndex) {
 
 function displayCards(filterProject) {
     dataCards.innerHTML = '';
-    renderThreatenedSummary(filterProject);
 
     let items = STATION_REGISTER.map((station, index) => ({ station, index }));
     if (filterProject !== 'all') {
@@ -1261,96 +1250,6 @@ function displayCards(filterProject) {
     }
 }
 
-// ─── Threatened species network summary (top of Data View) ───
-const threatSummaryEl = document.getElementById('threatened-summary');
-let threatLastHeard = {};   // "stationId|speciesId" -> ISO timestamp ('' if none, null while loading)
-
-function renderThreatenedSummary(filterProject) {
-    if (!speciesDataLoaded) { threatSummaryEl.innerHTML = ''; return; }
-    const bySpecies = new Map();
-    STATION_REGISTER.forEach((station, index) => {
-        if (filterProject !== 'all' && station.project !== filterProject) return;
-        threatenedIn(cachedSpeciesData[index]).forEach(s => {
-            const key = s.threat.common;
-            if (!bySpecies.has(key)) bySpecies.set(key, { threat: s.threat, total: 0, sites: [] });
-            const row = bySpecies.get(key);
-            row.total += s.count;
-            row.sites.push({ station, index, speciesId: s.species.id, count: s.count, state: reviewState(station.id, s.species.id) });
-        });
-    });
-
-    if (bySpecies.size === 0) {
-        threatSummaryEl.innerHTML = `<div class="bg-white rounded-xl shadow-sm border border-slate-200 px-6 py-4 mb-6 text-sm text-slate-500">No threatened species detected${filterProject !== 'all' ? ' in this project' : ''}.</div>`;
-        return;
-    }
-
-    const rows = [...bySpecies.values()].sort((a, b) => b.sites.length - a.sites.length || b.total - a.total);
-    const pending = [];
-    const body = rows.map(r => {
-        let loading = false;
-        const heard = r.sites.map(site => {
-            const k = `${site.station.id}|${site.speciesId}`;
-            if (!(k in threatLastHeard)) pending.push(site);
-            if (!threatLastHeard[k] && threatLastHeard[k] !== '') loading = true;
-            return threatLastHeard[k];
-        }).filter(Boolean).sort().pop();
-        const chips = r.sites.sort((a, b) => b.count - a.count).map(site => `
-            <button class="threat-site-btn inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-slate-200 bg-white hover:bg-red-50 hover:border-red-200 text-xs transition-colors"
-                    data-station-index="${site.index}" title="${site.station.site || site.station.project} · open timeline">
-                <span class="font-semibold text-teal-800">${site.station.name}</span>
-                <span class="font-mono text-slate-500">${site.count.toLocaleString()}</span>
-                ${site.state === 'confirmed' ? '<span class="text-green-700 font-bold" title="Confirmed by a reviewer">✓</span>' : site.state === 'incorrect' ? '<span class="text-slate-400" title="Reviewed clips marked incorrect">✗</span>' : '<span class="text-amber-500 font-bold" title="Not yet confirmed">?</span>'}
-            </button>`).join('');
-        const heardCell = heard ? formatTime(heard) : loading ? '<span class="animate-pulse">…</span>' : '—';
-        return `
-            <tr class="align-top">
-                <td class="py-3 px-4">
-                    <div class="font-semibold text-red-900">${r.threat.common}</div>
-                    <div class="text-xs text-slate-400 italic">${r.threat.sci}</div>
-                </td>
-                <td class="py-3 px-4 text-xs text-red-700 font-semibold whitespace-nowrap">${statusText(r.threat).replace(' · ', '<br>')}</td>
-                <td class="py-3 px-4"><div class="flex flex-wrap gap-1.5">${chips}</div></td>
-                <td class="py-3 px-4 text-right font-mono text-sm text-slate-700">${r.total.toLocaleString()}</td>
-                <td class="py-3 px-4 text-right text-xs text-slate-500 whitespace-nowrap">${heardCell}</td>
-            </tr>`;
-    }).join('');
-
-    threatSummaryEl.innerHTML = `
-        <div class="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden mb-6">
-            <div class="bg-red-50 px-6 py-3 border-b border-red-200 flex flex-wrap items-baseline justify-between gap-2">
-                <h2 class="font-bold text-lg text-red-800">Threatened species detected</h2>
-                <p class="text-xs text-red-700">BirdNET IDs: <span class="text-green-700 font-bold">✓</span> confirmed by a reviewer · <span class="text-amber-600 font-bold">?</span> not yet checked. Click a PUC to listen and review.</p>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left">
-                    <thead class="text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200">
-                        <tr><th class="py-2 px-4">Species</th><th class="py-2 px-4">Status</th><th class="py-2 px-4">PUCs (detections)</th><th class="py-2 px-4 text-right">Total</th><th class="py-2 px-4 text-right">Last heard</th></tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">${body}</tbody>
-                </table>
-            </div>
-        </div>`;
-
-    threatSummaryEl.querySelectorAll('.threat-site-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const idx = parseInt(btn.dataset.stationIndex);
-            openTimelineModal(STATION_REGISTER[idx], idx);
-        });
-    });
-
-    if (pending.length) loadLastHeard(pending, filterProject);
-}
-
-async function loadLastHeard(sites, filterProject) {
-    sites.forEach(site => { threatLastHeard[`${site.station.id}|${site.speciesId}`] = null; });
-    await Promise.all(sites.map(async site => {
-        const dets = await fetchDetections(site.station.id, site.speciesId, site.station.installed || null, false);
-        const latest = dets.map(d => d.timestamp).sort().pop();
-        threatLastHeard[`${site.station.id}|${site.speciesId}`] = latest || '';
-    }));
-    if (currentView === 'data' && projectFilter.value === filterProject) renderThreatenedSummary(filterProject);
-}
-
 // Species lists + reviews are shared by Status View badges and Data View, so fetch once.
 let speciesDataPromise = null;
 function ensureSpeciesData() {
@@ -1360,7 +1259,6 @@ function ensureSpeciesData() {
             fetchReviews()
         ]).then(([species]) => {
             cachedSpeciesData = species;
-            threatLastHeard = {};
             speciesDataLoaded = true;
         });
     }
@@ -1369,7 +1267,6 @@ function ensureSpeciesData() {
 
 async function loadSpeciesData() {
     dataCards.innerHTML = `<div class="col-span-full py-12 text-center text-slate-500"><span class="animate-pulse">Loading species data...</span></div>`;
-    threatSummaryEl.innerHTML = '';
     await ensureSpeciesData();
     cachedNewestSpecies = new Array(STATION_REGISTER.length).fill(null);
     displayCards(projectFilter.value);
@@ -2258,8 +2155,6 @@ misidToggle.addEventListener('change', () => {
 
 document.getElementById('refresh-btn').addEventListener('click', () => {
     if (currentView === 'status') {
-        speciesDataLoaded = false;
-        speciesDataPromise = null;
         tbody.innerHTML = `<tr id="loading-row"><td colspan="5" class="py-12 text-center text-slate-500"><span class="inline-block animate-pulse">Refreshing BirdPuc Data...</span></td></tr>`;
         renderTable();
     } else if (currentView === 'review') {
