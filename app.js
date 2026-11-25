@@ -1408,11 +1408,13 @@ function displayReviews(reviews) {
                     <span class="font-semibold text-slate-800">${review.speciesName || 'Unknown'}</span>
                     ${statusBadge}
                 </div>
-                <div class="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 mt-1">
                     <span>${review.stationName || ''}</span>
                     <span class="${scoreColor} font-semibold">Score ${Number(review.score || 0).toFixed(1)}</span>
                     <span>${confPct}% conf</span>
                     <span>Flagged by ${review.reviewer || '?'} ${flaggedDate}</span>
+                    ${review.detectionId ? `<a href="https://app.birdweather.com/detections/${encodeURIComponent(review.detectionId)}" target="_blank" rel="noopener"
+                        class="text-teal-600 hover:text-teal-800 font-semibold hover:underline whitespace-nowrap" title="Open the original recording on BirdWeather">BirdWeather ↗</a>` : ''}
                 </div>
                 ${review.correction ? `<p class="text-xs text-slate-600 mt-1 italic">${review.correction}</p>` : ''}
             </div>
