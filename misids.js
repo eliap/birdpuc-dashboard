@@ -23,4 +23,6 @@ export const MISIDENTIFIED_SPECIES = [
     'Purple-backed Fairywren',
     'Spotted dove',
     'Gray Butcherbird',
+    'Gang-gang Cockatoo',   // reviews: Sulphur-crested Cockatoo / Raven
+    'Musk Duck',            // reviews: frog calls
 ];

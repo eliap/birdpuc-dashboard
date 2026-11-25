@@ -64,6 +64,8 @@ function binomial(sci) {
 }
 
 function threatInfo(commonName, scientificName) {
+    // Known misIDs are never featured as threatened, whatever the Hide misIDs toggle says
+    if (isMisid(commonName || '')) return null;
     return threatenedBySci.get(binomial(scientificName))
         || threatenedByCommon.get((commonName || '').toLowerCase())
         || null;
